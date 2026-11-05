@@ -50,8 +50,9 @@ naming where the sibling sits. `vectors/merkle.json` holds the RFC vectors.
 ## 4. Record commitments
 
 - `link` and `hash` records are single-leaf trees: the leaf is the raw
-  32-byte digest the owner supplied. A `link` without a digest has leaf
-  count 0 and the empty root.
+  32-byte digest the owner supplied. A `link` without a digest commits to
+  the UTF-8 bytes of the URL as its single leaf (changed 2026-11-05; earlier
+  drafts said leaf count 0 and the empty root).
 - `text` records are segmented (section 5). Leaf `i` is the UTF-8 bytes of
   `"<i>" 0x1f "<version>" 0x1f <segment>` where `<i>` is the decimal index
   and `<version>` is the segmentation version (`v1`).
