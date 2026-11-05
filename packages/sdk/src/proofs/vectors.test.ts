@@ -4,6 +4,10 @@ import { describe, expect, it } from 'vitest'
 
 import { canonicalize } from './canonicalize'
 import type { JsonValue } from './canonicalize'
+import { commitCanonical, commitHashHex, verifyChain } from './commit'
+import type { CommitBody, Provenance } from './commit'
+import { gradeDocument, suggestWitness } from './grade'
+import type { Grade, Witness } from './grade'
 import {
   auditPath,
   fromHex,
@@ -163,5 +167,71 @@ describe('signature', () => {
     expect(
       await verifySignature('{"kind":"x"}', toBase64Url(signature), toHex(raw)),
     ).toBe(false)
+  })
+})
+
+describe('commit vectors', () => {
+  const v = vectors<{
+    commits: Array<{ body: CommitBody; canonical: string; hashHex: string }>
+    unsortedInput: CommitBody
+    brokenChain: { parent: string }
+  }>('commit.json')
+
+  it('canonicalizes and hashes every commit', async () => {
+    for (const c of v.commits) {
+      expect(commitCanonical(c.body)).toBe(c.canonical)
+      expect(await commitHashHex(c.body)).toBe(c.hashHex)
+    }
+  })
+
+  it('normalizes unsorted input to the same hash', async () => {
+    expect(await commitHashHex(v.unsortedInput)).toBe(v.commits[1]!.hashHex)
+  })
+
+  it('verifies the chain and rejects a broken parent', async () => {
+    expect(await verifyChain(v.commits)).toEqual({ ok: true })
+    const broken = {
+      ...v.commits[1]!,
+      body: { ...v.commits[1]!.body, parent: v.brokenChain.parent },
+    }
+    expect(await verifyChain([v.commits[0]!, broken])).toEqual({
+      ok: false,
+      seq: 2,
+      reason: 'parent',
+    })
+  })
+})
+
+describe('grade vectors', () => {
+  const v = vectors<{
+    cases: Array<{
+      name: string
+      provenance: Provenance | null
+      witnesses: Array<Witness>
+      grade: Grade
+      cap: Grade
+      mismatch: boolean
+    }>
+    suggestions: Array<{ provenance: Provenance; witness: Witness }>
+  }>('grade.json')
+
+  it('matches every case', () => {
+    for (const c of v.cases) {
+      const result = gradeDocument(c.provenance, c.witnesses)
+      expect(
+        { grade: result.grade, cap: result.cap, mismatch: result.mismatch },
+        c.name,
+      ).toEqual({
+        grade: c.grade,
+        cap: c.cap,
+        mismatch: c.mismatch,
+      })
+    }
+  })
+
+  it('suggests the expected statement', () => {
+    for (const s of v.suggestions) {
+      expect(suggestWitness(s.provenance)).toBe(s.witness)
+    }
   })
 })

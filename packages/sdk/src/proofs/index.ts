@@ -26,3 +26,39 @@ export {
 export type { Segment } from './segmentation'
 export { payloadHash, verifySignature } from './signature'
 export { concat, fromBase64, sha256, toBase64Url, utf8 } from './bytes'
+export {
+  aiInvolvements,
+  aiRoles,
+  commitCanonical,
+  commitHashHex,
+  commitKinds,
+  createdWhen,
+  creators,
+  normalizeCommit,
+  normalizeProvenance,
+  normalizeTree,
+  provenanceTypes,
+  verifyChain,
+  verifyCommitHash,
+} from './commit'
+export type {
+  AiInvolvement,
+  AiRole,
+  CommitAuthor,
+  CommitBody,
+  CommitKind,
+  CreatedWhen,
+  Creator,
+  DocumentKind,
+  Provenance,
+  ProvenanceType,
+  TreeEntry,
+} from './commit'
+export {
+  declarationCap,
+  gradeDocument,
+  statementGrade,
+  suggestWitness,
+  witnesses,
+} from './grade'
+export type { Grade, GradeResult, Witness } from './grade'

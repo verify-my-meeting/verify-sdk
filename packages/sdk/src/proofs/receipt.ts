@@ -11,7 +11,11 @@ export type Receipt = {
   root: string
   index: number
   path: Array<AuditStep>
-  item: { kind: 'attestation' | 'record'; id: string; leafHash: string }
+  item: {
+    kind: 'attestation' | 'record' | 'commit'
+    id: string
+    leafHash: string
+  }
   ledger: {
     kind: 'opentimestamps' | 'none'
     calendar: string | null

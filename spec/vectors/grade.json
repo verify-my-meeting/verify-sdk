@@ -1,0 +1,168 @@
+{
+  "description": "Human-involvement grade vectors: declaration, witness statements, expected grade and mismatch flag.",
+  "cases": [
+    {
+      "name": "verbatim during, witnessed",
+      "provenance": {
+        "type": "transcript",
+        "creators": ["owner"],
+        "created": "during",
+        "ai": "assisted",
+        "aiRole": "verbatim"
+      },
+      "witnesses": ["witnessed", "author"],
+      "grade": "A",
+      "cap": "A",
+      "mismatch": false
+    },
+    {
+      "name": "weakest statement wins",
+      "provenance": {
+        "type": "transcript",
+        "creators": ["owner"],
+        "created": "during",
+        "ai": "none"
+      },
+      "witnesses": ["witnessed", "representative"],
+      "grade": "B",
+      "cap": "A",
+      "mismatch": false
+    },
+    {
+      "name": "any none is ungraded",
+      "provenance": {
+        "type": "transcript",
+        "creators": ["owner"],
+        "created": "during",
+        "ai": "none"
+      },
+      "witnesses": ["witnessed", "none"],
+      "grade": "ungraded",
+      "cap": "A",
+      "mismatch": false
+    },
+    {
+      "name": "no approvals",
+      "provenance": {
+        "type": "minutes",
+        "creators": ["owner"],
+        "created": "after",
+        "ai": "generated",
+        "aiRole": "summary"
+      },
+      "witnesses": [],
+      "grade": "ungraded",
+      "cap": "B",
+      "mismatch": false
+    },
+    {
+      "name": "generated caps at B and flags author",
+      "provenance": {
+        "type": "minutes",
+        "creators": ["owner"],
+        "created": "after",
+        "ai": "generated",
+        "aiRole": "summary"
+      },
+      "witnesses": ["author"],
+      "grade": "B",
+      "cap": "B",
+      "mismatch": true
+    },
+    {
+      "name": "after the meeting without AI is B",
+      "provenance": {
+        "type": "notes",
+        "creators": ["owner"],
+        "created": "after",
+        "ai": "none"
+      },
+      "witnesses": ["author"],
+      "grade": "B",
+      "cap": "B",
+      "mismatch": true
+    },
+    {
+      "name": "prior artefact is C",
+      "provenance": {
+        "type": "image",
+        "creators": ["other-human"],
+        "created": "before",
+        "ai": "none",
+        "evidenceDocId": "e0000000-0000-4000-8000-000000000009"
+      },
+      "witnesses": ["verified-prior", "told-by-participant"],
+      "grade": "C",
+      "cap": "C",
+      "mismatch": false
+    },
+    {
+      "name": "undeclared",
+      "provenance": null,
+      "witnesses": ["author"],
+      "grade": "ungraded",
+      "cap": "ungraded",
+      "mismatch": false
+    }
+  ],
+  "suggestions": [
+    {
+      "provenance": {
+        "type": "transcript",
+        "creators": ["owner"],
+        "created": "during",
+        "ai": "assisted",
+        "aiRole": "verbatim"
+      },
+      "witness": "witnessed"
+    },
+    {
+      "provenance": {
+        "type": "minutes",
+        "creators": ["owner"],
+        "created": "after",
+        "ai": "generated",
+        "aiRole": "summary"
+      },
+      "witness": "representative"
+    },
+    {
+      "provenance": {
+        "type": "notes",
+        "creators": ["owner"],
+        "created": "during",
+        "ai": "assisted",
+        "aiRole": "enhanced"
+      },
+      "witness": "representative"
+    },
+    {
+      "provenance": {
+        "type": "image",
+        "creators": ["other-human"],
+        "created": "before",
+        "ai": "none"
+      },
+      "witness": "told-by-participant"
+    },
+    {
+      "provenance": {
+        "type": "image",
+        "creators": ["other-human"],
+        "created": "before",
+        "ai": "none",
+        "evidenceDocId": "e0000000-0000-4000-8000-000000000009"
+      },
+      "witness": "verified-prior"
+    },
+    {
+      "provenance": {
+        "type": "notes",
+        "creators": ["owner"],
+        "created": "after",
+        "ai": "none"
+      },
+      "witness": "representative"
+    }
+  ]
+}

@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   VmmApiError,
   buildAuthorizeUrl,
+  commitCanonical,
+  commitHashHex,
   createClient,
   createPkcePair,
 } from './index'
@@ -115,5 +117,37 @@ describe('createClient', () => {
     expect(url.searchParams.get('scope')).toBe(
       'workspaces:read invitations:write',
     )
+  })
+
+  it('exposes commit endpoints and verifies a fetched commit', async () => {
+    const body = {
+      v: 1 as const,
+      workspace: 'c0000000-0000-4000-8000-000000000003',
+      seq: 1,
+      parent: null,
+      kind: 'initial' as const,
+      author: { role: 'owner' as const, ref: null },
+      time: '2026-11-06T10:00:00.000Z',
+      message: '',
+      tree: [],
+    }
+    const hashHex = await commitHashHex(body)
+    const { calls, fetchLike } = fakeFetch(({ url }) => {
+      if (url.pathname.endsWith('/diff')) {
+        return new Response(JSON.stringify({ documents: [] }))
+      }
+      return new Response(
+        JSON.stringify({ hashHex, body, canonical: commitCanonical(body) }),
+      )
+    })
+    const client = createClient({
+      baseUrl: 'https://vmm.example',
+      fetch: fetchLike,
+    })
+    const verified = await client.commits.verify(hashHex)
+    expect(verified.valid).toBe(true)
+    await client.commits.diff(hashHex, 'lnk_x')
+    expect(calls[0]!.url.pathname).toBe(`/api/v1/commits/${hashHex}`)
+    expect(calls[1]!.url.search).toBe('?key=lnk_x')
   })
 })

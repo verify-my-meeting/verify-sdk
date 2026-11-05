@@ -1,12 +1,15 @@
 openapi: 3.1.0
 info:
   title: VerifyMyMeeting API
-  version: '1'
+  version: '1.1'
   description: |
-    Meeting attestation infrastructure. Workspaces hold records committed as
-    RFC 6962 Merkle trees; participants sign attendance, record approval, and
+    Meeting attestation infrastructure. Each workspace keeps one linear,
+    append-only chain of commits; a commit names a tree of documents (each
+    an RFC 6962 Merkle tree with a provenance declaration), its parent,
+    author, time, and message. Participants sign attendance, record approval
+    (naming a commit, with a witness statement per document), and
     disclosure attestations with per-workspace Ed25519 keys and a Cubid
-    humanity-score snapshot; batches of attestation hashes and record roots
+    humanity-score snapshot; batches of attestation hashes and commit hashes
     are anchored to OpenTimestamps.
 
     Authentication: `Authorization: Bearer vmm_sk_...` (integrator API key,
@@ -27,6 +30,7 @@ security:
 tags:
   - name: workspaces
   - name: records
+  - name: commits
   - name: invitations
   - name: participants
   - name: attestations
@@ -196,7 +200,7 @@ paths:
     parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
     get:
       tags: [records]
-      summary: List records (owner)
+      summary: List documents at the head commit (owner)
       responses:
         '200':
           description: Records
@@ -211,11 +215,14 @@ paths:
         default: { $ref: '#/components/responses/Error' }
     post:
       tags: [records]
-      summary: Attach a record
+      summary: Add or replace one document as one commit
       description: |
-        `link`: URL with optional SHA-256. `hash`: SHA-256 only. `text`: UTF-8
-        plain text or Markdown, segmented into Merkle leaves (segmentation v1).
-        Link and hash records are single-leaf trees over the digest.
+        Sugar for `POST /commits` with a single document. `link`: URL with
+        optional SHA-256. `hash`: SHA-256 only. `text`: UTF-8 plain text or
+        Markdown, segmented into Merkle leaves (segmentation v1). Link and
+        hash records are single-leaf trees over the digest. `provenance` is
+        required; `documentId` replaces an existing document with a new
+        version. Rejected when the workspace is closed.
       requestBody:
         required: true
         content:
@@ -223,10 +230,98 @@ paths:
             schema: { $ref: '#/components/schemas/RecordInput' }
       responses:
         '200':
-          description: Created record with its Merkle root
+          description: The record (document version) and the commit it created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RecordSummary' }
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/RecordSummary' }
+                  - type: object
+                    required: [commit]
+                    properties:
+                      commit: { $ref: '#/components/schemas/CommitSummary' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}/commits:
+    parameters:
+      - { $ref: '#/components/parameters/WorkspaceId' }
+      - name: key
+        in: query
+        schema: { type: string }
+    get:
+      tags: [commits]
+      summary: Commit history
+      description: Every commit of the workspace chain in order, readable at any access level above none.
+      security: [{}, { bearer: [] }]
+      responses:
+        '200':
+          description: Commits
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/CommitSummary' }
+        default: { $ref: '#/components/responses/Error' }
+    post:
+      tags: [commits]
+      summary: Create a commit
+      description: |
+        Add or replace documents and/or remove documents in one commit on
+        the workspace chain. Commits are append-only and linear; the kind is
+        derived (`initial`, `add-document`, `edit`, `remove-document`).
+        Commits after participants have attested are allowed; their approvals
+        stay on the commit they signed. Owners and integrators only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommitInput' }
+      responses:
+        '200':
+          description: The new head commit
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitSummary' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/commits/{hash}:
+    parameters:
+      - { $ref: '#/components/parameters/CommitHash' }
+      - name: key
+        in: query
+        schema: { type: string }
+    get:
+      tags: [commits]
+      summary: Read a commit with its hashed body
+      description: Recompute `SHA-256(canonical)` and compare with `hashHex` to verify (spec section 12).
+      security: [{}, { bearer: [] }]
+      responses:
+        '200':
+          description: Commit
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitDetail' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/commits/{hash}/diff:
+    parameters:
+      - { $ref: '#/components/parameters/CommitHash' }
+      - name: key
+        in: query
+        schema: { type: string }
+    get:
+      tags: [commits]
+      summary: Difference from the parent commit
+      security: [{}, { bearer: [] }]
+      responses:
+        '200':
+          description: Per-document changes by leaf hash
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitDiff' }
         default: { $ref: '#/components/responses/Error' }
 
   /api/v1/workspaces/{id}/records/{recordId}:
@@ -383,11 +478,12 @@ paths:
       - name: kind
         in: path
         required: true
-        schema: { type: string, enum: [attestation, record] }
+        schema: { type: string, enum: [attestation, commit] }
       - name: id
         in: path
         required: true
-        schema: { type: string, format: uuid }
+        description: Attestation id, commit id, or commit hash (64 hex)
+        schema: { type: string }
     get:
       tags: [anchoring]
       summary: Inclusion receipt
@@ -476,6 +572,11 @@ components:
       scheme: bearer
       description: '`vmm_sk_...` integrator API key or `vmm_ct_...` consent token'
   parameters:
+    CommitHash:
+      name: hash
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[0-9a-fA-F]{64}$' }
     WorkspaceId:
       name: id
       in: path
@@ -609,12 +710,238 @@ components:
         attestations:
           type: array
           items: { $ref: '#/components/schemas/Attestation' }
-    RecordSummary:
+    Provenance:
+      type: object
+      description: Provenance declaration, committed with the document (spec section 13)
+      required: [type, creators, created, ai]
+      properties:
+        type:
+          {
+            type: string,
+            enum:
+              [
+                transcript,
+                minutes,
+                notes,
+                recording,
+                image,
+                evidence,
+                code,
+                other,
+              ],
+          }
+        creators:
+          type: array
+          minItems: 1
+          items: { type: string, enum: [owner, participant, other-human] }
+        created: { type: string, enum: [before, during, after] }
+        ai: { type: string, enum: [none, assisted, generated] }
+        aiRole:
+          {
+            type: string,
+            enum: [verbatim, summary, enhanced],
+            description: Required unless ai is none,
+          }
+        evidenceDocId:
+          {
+            type: string,
+            format: uuid,
+            description: An evidence document in the same package,
+          }
+        note: { type: string, maxLength: 280 }
+    Witness:
+      type: string
+      description: What the participant personally vouches for about a document's origin
+      enum:
+        [
+          author,
+          witnessed,
+          representative,
+          inspired,
+          verified-prior,
+          told-by-participant,
+          told-third-party,
+          none,
+        ]
+    Grade:
+      type: string
+      enum: [A, B, C, ungraded]
+    GradeResult:
+      type: object
+      required: [grade, cap, statements, mismatch]
+      properties:
+        grade: { $ref: '#/components/schemas/Grade' }
+        cap: { $ref: '#/components/schemas/Grade' }
+        statements:
+          type: array
+          items:
+            type: object
+            required: [witness, grade, mismatch]
+            properties:
+              witness: { $ref: '#/components/schemas/Witness' }
+              grade: { $ref: '#/components/schemas/Grade' }
+              mismatch: { type: boolean }
+        mismatch: { type: boolean }
+    LeafSet:
+      description: '"all", "none" (explicit exclusion), or inclusive [start, end] index ranges'
+      oneOf:
+        - { const: all }
+        - { const: none }
+        - type: array
+          items:
+            type: array
+            items: { type: integer }
+            minItems: 2
+            maxItems: 2
+    TreeEntry:
+      type: object
+      required: [doc, kind, label, root, leafCount, segmentation, provenance]
+      properties:
+        doc: { type: string, format: uuid }
+        kind: { type: string, enum: [link, hash, text] }
+        label: { type: string }
+        root: { type: string }
+        leafCount: { type: integer }
+        segmentation: { type: [string, 'null'] }
+        provenance: { $ref: '#/components/schemas/Provenance' }
+    CommitAuthor:
+      type: object
+      required: [role, ref]
+      properties:
+        role: { type: string, enum: [owner, integrator, participant] }
+        ref: { type: [string, 'null'] }
+    CommitBody:
+      type: object
+      description: The hashed object; tree sorted by doc (spec section 12)
+      required: [v, workspace, seq, parent, kind, author, time, message, tree]
+      properties:
+        v: { const: 1 }
+        workspace: { type: string, format: uuid }
+        seq: { type: integer, minimum: 1 }
+        parent: { type: [string, 'null'] }
+        kind:
+          {
+            type: string,
+            enum: [initial, edit, comment, add-document, remove-document],
+          }
+        author: { $ref: '#/components/schemas/CommitAuthor' }
+        time: { type: string, format: date-time }
+        message: { type: string }
+        tree:
+          type: array
+          items: { $ref: '#/components/schemas/TreeEntry' }
+    CommitSummary:
       type: object
       required:
         [
           id,
           workspaceId,
+          seq,
+          hashHex,
+          parentHashHex,
+          kind,
+          author,
+          message,
+          committedAt,
+          tree,
+          documents,
+          parentDocuments,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceId: { type: string, format: uuid }
+        seq: { type: integer }
+        hashHex: { type: string }
+        parentHashHex: { type: [string, 'null'] }
+        kind:
+          {
+            type: string,
+            enum: [initial, edit, comment, add-document, remove-document],
+          }
+        author: { $ref: '#/components/schemas/CommitAuthor' }
+        message: { type: string }
+        committedAt: { type: string, format: date-time }
+        tree:
+          type: array
+          items: { $ref: '#/components/schemas/TreeEntry' }
+        documents:
+          type: array
+          description: Document id to record (version) id, in tree order
+          items:
+            type: object
+            required: [documentId, recordId]
+            properties:
+              documentId: { type: string, format: uuid }
+              recordId: { type: string, format: uuid }
+        parentDocuments:
+          type: array
+          items: { type: string, format: uuid }
+    CommitDetail:
+      allOf:
+        - { $ref: '#/components/schemas/CommitSummary' }
+        - type: object
+          required: [body, canonical]
+          properties:
+            body: { $ref: '#/components/schemas/CommitBody' }
+            canonical: { type: string, description: RFC 8785 form of body }
+    CommitInput:
+      type: object
+      properties:
+        message: { type: string, maxLength: 500 }
+        documents:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/DocumentInput' }
+        remove:
+          type: array
+          maxItems: 50
+          items: { type: string, format: uuid }
+    CommitDiff:
+      type: object
+      required: [commit, parent, documents]
+      properties:
+        commit: { $ref: '#/components/schemas/CommitSummary' }
+        parent:
+          oneOf:
+            - { $ref: '#/components/schemas/CommitSummary' }
+            - { type: 'null' }
+        documents:
+          type: array
+          items:
+            type: object
+            required:
+              [
+                documentId,
+                label,
+                change,
+                leaves,
+                provenanceChanged,
+                labelChanged,
+              ]
+            properties:
+              documentId: { type: string, format: uuid }
+              label: { type: string }
+              change:
+                { type: string, enum: [added, removed, modified, unchanged] }
+              leaves:
+                oneOf:
+                  - type: object
+                    required: [same, added, removed]
+                    properties:
+                      same: { type: integer }
+                      added: { type: integer }
+                      removed: { type: integer }
+                  - { type: 'null' }
+              provenanceChanged: { type: boolean }
+              labelChanged: { type: boolean }
+    RecordSummary:
+      type: object
+      description: One version of a document, committed as a Merkle tree
+      required:
+        [
+          id,
+          workspaceId,
+          documentId,
           kind,
           label,
           url,
@@ -624,14 +951,19 @@ components:
           leafCount,
           rootHex,
           version,
-          supersedesRecordId,
+          provenance,
           contentVisibility,
-          locked,
           createdAt,
         ]
       properties:
         id: { type: string, format: uuid }
         workspaceId: { type: string, format: uuid }
+        documentId:
+          {
+            type: string,
+            format: uuid,
+            description: Stable across versions; named by trees and approvals,
+          }
         kind: { type: string, enum: [link, hash, text] }
         label: { type: string }
         url: { type: [string, 'null'] }
@@ -641,18 +973,16 @@ components:
         leafCount: { type: integer }
         rootHex: { type: string, description: RFC 6962 SHA-256 root }
         version: { type: integer }
-        supersedesRecordId: { type: [string, 'null'], format: uuid }
+        provenance:
+          oneOf:
+            - { $ref: '#/components/schemas/Provenance' }
+            - { type: 'null' }
         contentVisibility: { $ref: '#/components/schemas/ContentVisibility' }
-        locked:
-          {
-            type: boolean,
-            description: True once any attestation references the record,
-          }
         createdAt: { type: string, format: date-time }
-    RecordInput:
+    DocumentInput:
       oneOf:
         - type: object
-          required: [kind, url]
+          required: [kind, url, provenance]
           properties:
             kind: { const: link }
             url: { type: string, format: uri }
@@ -660,25 +990,34 @@ components:
             hashHex: { type: string, pattern: '^[0-9a-fA-F]{64}$' }
             contentVisibility:
               { $ref: '#/components/schemas/ContentVisibility' }
-            supersedesRecordId: { type: string, format: uuid }
+            documentId: { type: string, format: uuid }
+            provenance: { $ref: '#/components/schemas/Provenance' }
         - type: object
-          required: [kind, label, hashHex]
+          required: [kind, label, hashHex, provenance]
           properties:
             kind: { const: hash }
             label: { type: string, minLength: 1, maxLength: 200 }
             hashHex: { type: string, pattern: '^[0-9a-fA-F]{64}$' }
             contentVisibility:
               { $ref: '#/components/schemas/ContentVisibility' }
-            supersedesRecordId: { type: string, format: uuid }
+            documentId: { type: string, format: uuid }
+            provenance: { $ref: '#/components/schemas/Provenance' }
         - type: object
-          required: [kind, text]
+          required: [kind, text, provenance]
           properties:
             kind: { const: text }
             text: { type: string, minLength: 1 }
             label: { type: string, maxLength: 200 }
             contentVisibility:
               { $ref: '#/components/schemas/ContentVisibility' }
-            supersedesRecordId: { type: string, format: uuid }
+            documentId: { type: string, format: uuid }
+            provenance: { $ref: '#/components/schemas/Provenance' }
+    RecordInput:
+      allOf:
+        - { $ref: '#/components/schemas/DocumentInput' }
+        - type: object
+          properties:
+            message: { type: string, maxLength: 500 }
     RecordContent:
       type: object
       required: [record, segments, leaves]
@@ -800,7 +1139,7 @@ components:
           workspaceId,
           participantId,
           kind,
-          recordId,
+          commitId,
           payload,
           payloadHashHex,
           signatureB64,
@@ -815,7 +1154,12 @@ components:
         workspaceId: { type: string, format: uuid }
         participantId: { type: string, format: uuid }
         kind: { type: string, enum: [attendance, record, disclosure] }
-        recordId: { type: [string, 'null'], format: uuid }
+        commitId:
+          {
+            type: [string, 'null'],
+            format: uuid,
+            description: The approved commit (record attestations),
+          }
         payload:
           description: Signed payload (see spec/README.md); null for tombstones
           oneOf:
@@ -864,18 +1208,19 @@ components:
             format: date-time,
             description: attendance range only,
           }
-        record: { type: string, format: uuid, description: record only }
-        root: { type: string, description: record only }
-        leaves:
-          description: record only; "all" or inclusive [start, end] index ranges
-          oneOf:
-            - { const: all }
-            - type: array
-              items:
-                type: array
-                items: { type: integer }
-                minItems: 2
-                maxItems: 2
+        commit: { type: string, description: record only; commit hash }
+        seq: { type: integer, description: record only; commit sequence }
+        approvals:
+          description: record only; one entry per document of the commit
+          type: array
+          items:
+            type: object
+            required: [doc, root, leaves, witness]
+            properties:
+              doc: { type: string, format: uuid }
+              root: { type: string }
+              leaves: { $ref: '#/components/schemas/LeafSet' }
+              witness: { $ref: '#/components/schemas/Witness' }
         public:
           {
             type: string,
@@ -905,7 +1250,7 @@ components:
           publicKeyHex,
           score,
           attendance,
-          approvals,
+          approval,
           profile,
           profileUpdatedAt,
         ]
@@ -924,16 +1269,70 @@ components:
           oneOf:
             - { $ref: '#/components/schemas/Attestation' }
             - { type: 'null' }
-        approvals:
-          type: array
-          items:
-            type: object
-            required: [recordId, attestation]
-            properties:
-              recordId: { type: string, format: uuid }
-              attestation: { $ref: '#/components/schemas/Attestation' }
+        approval:
+          oneOf:
+            - type: object
+              required:
+                [
+                  attestation,
+                  commitId,
+                  commitHashHex,
+                  commitSeq,
+                  current,
+                  documents,
+                ]
+              properties:
+                attestation: { $ref: '#/components/schemas/Attestation' }
+                commitId: { type: string, format: uuid }
+                commitHashHex: { type: string }
+                commitSeq: { type: integer }
+                current:
+                  {
+                    type: boolean,
+                    description: False when later commits exist that this participant has not approved,
+                  }
+                documents:
+                  type: array
+                  items:
+                    type: object
+                    required: [documentId, leaves, witness]
+                    properties:
+                      documentId: { type: string, format: uuid }
+                      leaves: { $ref: '#/components/schemas/LeafSet' }
+                      witness: { $ref: '#/components/schemas/Witness' }
+            - { type: 'null' }
         profile: { $ref: '#/components/schemas/ProfileFields' }
         profileUpdatedAt: { type: [string, 'null'], format: date-time }
+    VerificationCommit:
+      type: object
+      required:
+        [
+          id,
+          seq,
+          hashHex,
+          parentHashHex,
+          kind,
+          author,
+          message,
+          committedAt,
+          tree,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        seq: { type: integer }
+        hashHex: { type: string }
+        parentHashHex: { type: [string, 'null'] }
+        kind:
+          {
+            type: string,
+            enum: [initial, edit, comment, add-document, remove-document],
+          }
+        author: { $ref: '#/components/schemas/CommitAuthor' }
+        message: { type: string }
+        committedAt: { type: string, format: date-time }
+        tree:
+          type: array
+          items: { $ref: '#/components/schemas/TreeEntry' }
     VerificationPage:
       type: object
       required:
@@ -942,7 +1341,9 @@ components:
           workspace,
           participants,
           withdrawnCount,
-          records,
+          head,
+          commits,
+          documents,
           anchoring,
           proves,
           doesNotProve,
@@ -969,18 +1370,35 @@ components:
           type: array
           items: { $ref: '#/components/schemas/VerificationParticipant' }
         withdrawnCount: { type: integer }
-        records:
+        head:
+          oneOf:
+            - { $ref: '#/components/schemas/VerificationCommit' }
+            - { type: 'null' }
+        commits:
+          type: array
+          items: { $ref: '#/components/schemas/VerificationCommit' }
+        documents:
+          description: Documents at the head commit
           type: array
           items:
             allOf:
               - { $ref: '#/components/schemas/RecordSummary' }
               - type: object
-                required: [contentVisible, approvedBy]
+                required: [contentVisible, approvals, grade]
                 properties:
                   contentVisible: { type: boolean }
-                  approvedBy:
+                  approvals:
                     type: array
-                    items: { type: string }
+                    items:
+                      type: object
+                      required: [handle, leaves, witness]
+                      properties:
+                        handle: { type: string }
+                        leaves: { $ref: '#/components/schemas/LeafSet' }
+                        witness: { $ref: '#/components/schemas/Witness' }
+                  grade:
+                    description: Recomputed by the server; verifiers recompute it with gradeDocument()
+                    $ref: '#/components/schemas/GradeResult'
         anchoring:
           type: object
           required: [anchored, pending, items]
@@ -993,7 +1411,8 @@ components:
                 type: object
                 required: [itemKind, itemId, batchId, status]
                 properties:
-                  itemKind: { type: string, enum: [attestation, record] }
+                  itemKind:
+                    { type: string, enum: [attestation, record, commit] }
                   itemId: { type: string, format: uuid }
                   batchId: { type: string, format: uuid }
                   status: { $ref: '#/components/schemas/BatchStatus' }
@@ -1024,7 +1443,7 @@ components:
           type: object
           required: [kind, id, leafHash]
           properties:
-            kind: { type: string, enum: [attestation, record] }
+            kind: { type: string, enum: [attestation, record, commit] }
             id: { type: string, format: uuid }
             leafHash: { type: string }
         ledger:

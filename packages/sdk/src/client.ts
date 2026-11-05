@@ -13,6 +13,10 @@ import type {
   Attestation,
   Batch,
   BatchList,
+  CommitDetail,
+  CommitDiff,
+  CommitInput,
+  CommitSummary,
   ConsentScope,
   CreatedInvitation,
   Invitation,
@@ -140,13 +144,15 @@ export function createClient(options: ClientOptions) {
   }
 
   const records = {
+    /** Documents at the head commit (owner). */
     list: (workspaceId: string) =>
       request<ListResponse<RecordSummary>>(
         'GET',
         `/api/v1/workspaces/${workspaceId}/records`,
       ),
+    /** One document as one commit; `provenance` is required. */
     create: (workspaceId: string, input: RecordInput) =>
-      request<RecordSummary>(
+      request<RecordSummary & { commit: CommitSummary }>(
         'POST',
         `/api/v1/workspaces/${workspaceId}/records`,
         input,
@@ -158,6 +164,45 @@ export function createClient(options: ClientOptions) {
         undefined,
         { query: { key: linkKey } },
       ),
+  }
+
+  const commits = {
+    list: (workspaceId: string, linkKey?: string) =>
+      request<ListResponse<CommitSummary>>(
+        'GET',
+        `/api/v1/workspaces/${workspaceId}/commits`,
+        undefined,
+        { query: { key: linkKey } },
+      ),
+    /** Add, replace, or remove documents in one new commit. */
+    create: (workspaceId: string, input: CommitInput) =>
+      request<CommitSummary>(
+        'POST',
+        `/api/v1/workspaces/${workspaceId}/commits`,
+        input,
+      ),
+    get: (hashHex: string, linkKey?: string) =>
+      request<CommitDetail>('GET', `/api/v1/commits/${hashHex}`, undefined, {
+        query: { key: linkKey },
+      }),
+    diff: (hashHex: string, linkKey?: string) =>
+      request<CommitDiff>('GET', `/api/v1/commits/${hashHex}/diff`, undefined, {
+        query: { key: linkKey },
+      }),
+    /** Fetch a commit and recompute its hash locally. */
+    verify: async (hashHex: string, linkKey?: string) => {
+      const detail = await request<CommitDetail>(
+        'GET',
+        `/api/v1/commits/${hashHex}`,
+        undefined,
+        { query: { key: linkKey } },
+      )
+      const { verifyCommitHash } = await import('./proofs/commit')
+      return {
+        commit: detail,
+        valid: await verifyCommitHash(detail.body, detail.hashHex),
+      }
+    },
   }
 
   const invitations = {
@@ -228,6 +273,7 @@ export function createClient(options: ClientOptions) {
   return {
     workspaces,
     records,
+    commits,
     invitations,
     participants,
     attestations,
@@ -236,8 +282,8 @@ export function createClient(options: ClientOptions) {
     /** Verification page by public slug, link token, or workspace id. */
     verify: (key: string) =>
       request<VerificationPage>('GET', `/api/v1/verify/${key}`),
-    /** Inclusion receipt for an attestation or record, if anchored. */
-    receipt: (kind: 'attestation' | 'record', id: string) =>
+    /** Inclusion receipt for an attestation or commit (by id or hash), if anchored. */
+    receipt: (kind: 'attestation' | 'commit', id: string) =>
       request<ReceiptResponse>('GET', `/api/v1/receipts/${kind}/${id}`),
     me: () => request<Me>('GET', '/api/v1/me'),
     /** Rate-limit headers from the most recent response. */

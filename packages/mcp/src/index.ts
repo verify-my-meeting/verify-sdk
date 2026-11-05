@@ -7,11 +7,19 @@
  * integrator API key or a consent token.
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { VmmApiError, createClient } from '@verifymymeeting/sdk'
-import type { VmmClient } from '@verifymymeeting/sdk'
+import {
+  VmmApiError,
+  aiInvolvements,
+  aiRoles,
+  createClient,
+  createdWhen,
+  creators,
+  provenanceTypes,
+} from '@verifymymeeting/sdk'
+import type { Provenance, VmmClient } from '@verifymymeeting/sdk'
 import { z } from 'zod'
 
-export const MCP_PACKAGE_VERSION = '0.1.0'
+export const MCP_PACKAGE_VERSION = '0.2.0'
 
 export type VmmMcpOptions = {
   baseUrl: string | URL
@@ -29,6 +37,87 @@ const contentVisibility = z
   .describe(
     'Who may read the record content: public, link holders, or workspace viewers',
   )
+
+const provenanceSchema = z
+  .object({
+    type: z.enum(provenanceTypes).describe('What the document is'),
+    creators: z
+      .array(z.enum(creators))
+      .min(1)
+      .describe('Who made it: the owner, a participant, another person'),
+    created: z
+      .enum(createdWhen)
+      .describe('Made before, during, or after the meeting'),
+    ai: z
+      .enum(aiInvolvements)
+      .describe('none, assisted (a human made it with AI help), or generated'),
+    aiRole: z
+      .enum(aiRoles)
+      .optional()
+      .describe(
+        'Required unless ai=none: verbatim (exact transcript or notes), summary (not embellished), enhanced',
+      ),
+    evidenceDocId: z
+      .string()
+      .uuid()
+      .optional()
+      .describe(
+        'For a verified prior artefact: the evidence document in the same package',
+      ),
+    note: z.string().max(280).optional(),
+  })
+  .describe(
+    'Provenance declaration, committed with the document and shown to readers',
+  )
+
+const documentSchema = z.object({
+  kind: z.enum(['link', 'hash', 'text']),
+  label: z.string().max(200).optional(),
+  url: z.string().url().optional().describe('Required for kind=link'),
+  hashHex: hex64
+    .optional()
+    .describe('Required for kind=hash; optional for kind=link'),
+  text: z
+    .string()
+    .optional()
+    .describe('Required for kind=text (plain text or Markdown)'),
+  contentVisibility: contentVisibility.optional(),
+  documentId: z
+    .string()
+    .uuid()
+    .optional()
+    .describe('Replace this existing document with a new version'),
+  provenance: provenanceSchema,
+})
+
+function toDocumentInput(doc: z.infer<typeof documentSchema>) {
+  const shared = {
+    label: doc.label,
+    contentVisibility: doc.contentVisibility,
+    documentId: doc.documentId,
+    provenance: doc.provenance as Provenance,
+  }
+  if (doc.kind === 'link') {
+    if (!doc.url) throw new Error('url is required for kind=link')
+    return {
+      kind: 'link' as const,
+      url: doc.url,
+      hashHex: doc.hashHex,
+      ...shared,
+    }
+  }
+  if (doc.kind === 'hash') {
+    if (!doc.hashHex) throw new Error('hashHex is required for kind=hash')
+    return {
+      kind: 'hash' as const,
+      hashHex: doc.hashHex,
+      ...shared,
+      label: doc.label ?? 'Document',
+    }
+  }
+  if (!doc.text) throw new Error('text is required for kind=text')
+  return { kind: 'text' as const, text: doc.text, ...shared }
+}
 
 function ok(data: unknown) {
   return {
@@ -135,58 +224,74 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
   server.registerTool(
     'vmm_attach_record',
     {
-      title: 'Attach a record to a workspace',
+      title: 'Add a document to a workspace',
       description:
-        'Attach a recording link (with optional SHA-256), a hash-only commitment, or transcript text that VerifyMyMeeting segments into Merkle leaves. Returns the record with its Merkle root.',
+        'Add one document (a recording link with optional SHA-256, a hash-only commitment, or transcript text segmented into Merkle leaves) as one commit on the workspace chain, with its provenance declaration. Pass documentId to replace an existing document. Returns the record with its Merkle root and the commit.',
       inputSchema: {
         workspaceId: z.string().uuid(),
-        kind: z.enum(['link', 'hash', 'text']),
-        label: z.string().max(200).optional(),
-        url: z.string().url().optional().describe('Required for kind=link'),
-        hashHex: hex64
-          .optional()
-          .describe('Required for kind=hash; optional for kind=link'),
-        text: z
-          .string()
-          .optional()
-          .describe('Required for kind=text (plain text or Markdown)'),
-        contentVisibility: contentVisibility.optional(),
-        supersedesRecordId: z.string().uuid().optional(),
+        ...documentSchema.shape,
+        message: z.string().max(500).optional().describe('Commit message'),
       },
     },
-    ({
-      workspaceId,
-      kind,
-      label,
-      url,
-      hashHex,
-      text,
-      contentVisibility: cv,
-      supersedesRecordId,
-    }) =>
+    ({ workspaceId, message, ...doc }) =>
+      run(() =>
+        client.records.create(workspaceId, {
+          ...toDocumentInput(doc),
+          message,
+        }),
+      ),
+  )
+
+  server.registerTool(
+    'vmm_commit_records',
+    {
+      title: 'Commit several document changes',
+      description:
+        'Create one commit that adds or replaces several documents and/or removes documents from the package. Every added or replaced document needs a provenance declaration. Commits are append-only; participants approve a specific commit.',
+      inputSchema: {
+        workspaceId: z.string().uuid(),
+        message: z.string().max(500).optional(),
+        documents: z.array(documentSchema).optional(),
+        remove: z
+          .array(z.string().uuid())
+          .optional()
+          .describe('Document ids to drop from the package'),
+      },
+    },
+    ({ workspaceId, message, documents, remove }) =>
+      run(() =>
+        client.commits.create(workspaceId, {
+          message,
+          documents: (documents ?? []).map(toDocumentInput),
+          remove,
+        }),
+      ),
+  )
+
+  server.registerTool(
+    'vmm_get_history',
+    {
+      title: 'Get the commit history of a workspace',
+      description:
+        'List the commits of a workspace package in order (sequence, hash, kind, author, message, tree of documents with their roots and provenance). Optionally include the diff of one commit against its parent.',
+      inputSchema: {
+        workspaceId: z.string().uuid(),
+        linkKey: z
+          .string()
+          .optional()
+          .describe('Link token for link-visible workspaces'),
+        diffOf: z
+          .string()
+          .regex(/^[0-9a-f]{64}$/iu)
+          .optional()
+          .describe('Also return the diff of this commit hash'),
+      },
+    },
+    ({ workspaceId, linkKey, diffOf }) =>
       run(async () => {
-        const shared = { label, contentVisibility: cv, supersedesRecordId }
-        if (kind === 'link') {
-          if (!url) throw new Error('url is required for kind=link')
-          return client.records.create(workspaceId, {
-            kind,
-            url,
-            hashHex,
-            ...shared,
-          })
-        }
-        if (kind === 'hash') {
-          if (!hashHex) throw new Error('hashHex is required for kind=hash')
-          return client.records.create(workspaceId, {
-            kind,
-            hashHex,
-            label: label ?? 'Document',
-            contentVisibility: cv,
-            supersedesRecordId,
-          })
-        }
-        if (!text) throw new Error('text is required for kind=text')
-        return client.records.create(workspaceId, { kind, text, ...shared })
+        const history = await client.commits.list(workspaceId, linkKey)
+        const diff = diffOf ? await client.commits.diff(diffOf, linkKey) : null
+        return { ...history, diff }
       }),
   )
 
@@ -216,7 +321,7 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
     {
       title: 'Get a verification page',
       description:
-        'Read the verification page for a public slug, a link token, or a workspace id: participants with handles and score snapshots, attestations, records with approvals, and anchoring status.',
+        'Read the verification page for a public slug, a link token, or a workspace id: participants with handles and score snapshots, the commit each approved, documents at the head commit with declarations, witness statements and human-involvement grades, and anchoring status.',
       inputSchema: { key: z.string().min(1) },
     },
     ({ key }) => run(() => client.verify(key)),
@@ -227,10 +332,10 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
     {
       title: 'Get an anchoring receipt',
       description:
-        'Fetch the inclusion receipt for an attestation or record and the server-side verdict (valid, pending, invalid).',
+        'Fetch the inclusion receipt for an attestation or commit and the server-side verdict (valid, pending, invalid).',
       inputSchema: {
-        kind: z.enum(['attestation', 'record']),
-        id: z.string().uuid(),
+        kind: z.enum(['attestation', 'commit']),
+        id: z.string().describe('Attestation id, commit id, or commit hash'),
       },
     },
     ({ kind, id }) => run(() => client.receipt(kind, id)),
@@ -244,6 +349,8 @@ export const toolNames = [
   'vmm_create_workspace',
   'vmm_get_workspace',
   'vmm_attach_record',
+  'vmm_commit_records',
+  'vmm_get_history',
   'vmm_create_invitation',
   'vmm_get_verification',
   'vmm_get_receipt',

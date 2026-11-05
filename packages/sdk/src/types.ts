@@ -4,6 +4,14 @@
  * the published contract.
  */
 import type { JsonValue } from './proofs/canonicalize'
+import type {
+  CommitAuthor,
+  CommitBody,
+  CommitKind,
+  Provenance,
+  TreeEntry,
+} from './proofs/commit'
+import type { GradeResult, Witness } from './proofs/grade'
 import type { Receipt, ReceiptVerdict } from './proofs/receipt'
 
 export type Visibility = 'private' | 'link' | 'public'
@@ -65,9 +73,12 @@ export type WorkspaceInput = {
   minScore?: number | null
 }
 
+/** One version of a document: content committed as a Merkle tree. */
 export type RecordSummary = {
   id: string
   workspaceId: string
+  /** Stable across versions; what commit trees and approvals name. */
+  documentId: string
   kind: RecordKind
   label: string
   url: string | null
@@ -77,35 +88,72 @@ export type RecordSummary = {
   leafCount: number
   rootHex: string
   version: number
-  supersedesRecordId: string | null
+  provenance: Provenance | null
   contentVisibility: ContentVisibility
-  locked: boolean
   createdAt: string
 }
 
-export type RecordInput =
-  | {
-      kind: 'link'
-      url: string
-      label?: string
-      hashHex?: string
-      contentVisibility?: ContentVisibility
-      supersedesRecordId?: string
-    }
-  | {
-      kind: 'hash'
-      label: string
-      hashHex: string
-      contentVisibility?: ContentVisibility
-      supersedesRecordId?: string
-    }
-  | {
-      kind: 'text'
-      text: string
-      label?: string
-      contentVisibility?: ContentVisibility
-      supersedesRecordId?: string
-    }
+type DocumentShared = {
+  label?: string
+  contentVisibility?: ContentVisibility
+  /** Replace this document with a new version; omit to add a document. */
+  documentId?: string
+  /** Required: the provenance declaration (spec section 13). */
+  provenance: Provenance
+}
+
+export type DocumentInput =
+  | (DocumentShared & { kind: 'link'; url: string; hashHex?: string })
+  | (DocumentShared & { kind: 'hash'; label: string; hashHex: string })
+  | (DocumentShared & { kind: 'text'; text: string })
+
+/** `POST /records`: one document as one commit, optional message. */
+export type RecordInput = DocumentInput & { message?: string }
+
+export type CommitInput = {
+  message?: string
+  documents?: Array<DocumentInput>
+  /** Document ids to drop from the package. */
+  remove?: Array<string>
+}
+
+export type CommitSummary = {
+  id: string
+  workspaceId: string
+  seq: number
+  hashHex: string
+  parentHashHex: string | null
+  kind: CommitKind
+  author: CommitAuthor
+  message: string
+  committedAt: string
+  tree: Array<TreeEntry>
+  documents: Array<{ documentId: string; recordId: string }>
+  parentDocuments: Array<string>
+}
+
+/** `GET /commits/:hash`: the summary plus the hashed body. */
+export type CommitDetail = CommitSummary & {
+  body: CommitBody
+  canonical: string
+}
+
+export type DocumentDiff = {
+  documentId: string
+  label: string
+  change: 'added' | 'removed' | 'modified' | 'unchanged'
+  leaves: { same: number; added: number; removed: number } | null
+  provenanceChanged: boolean
+  labelChanged: boolean
+}
+
+export type CommitDiff = {
+  commit: CommitSummary
+  parent: CommitSummary | null
+  documents: Array<DocumentDiff>
+}
+
+export type LeafSet = 'all' | 'none' | Array<[number, number]>
 
 export type RecordContent = {
   record: RecordSummary
@@ -177,7 +225,8 @@ export type Attestation = {
   workspaceId: string
   participantId: string
   kind: AttestationKind
-  recordId: string | null
+  /** The approved commit, for `record` attestations. */
+  commitId: string | null
   payload: JsonValue | null
   payloadHashHex: string | null
   signatureB64: string | null
@@ -207,9 +256,14 @@ export type AttestationPayload =
     })
   | (AttestationPayloadBase & {
       kind: 'record'
-      record: string
-      root: string
-      leaves: 'all' | Array<[number, number]>
+      commit: string
+      seq: number
+      approvals: Array<{
+        doc: string
+        root: string
+        leaves: LeafSet
+        witness: Witness
+      }>
     })
   | (AttestationPayloadBase & {
       kind: 'disclosure'
@@ -229,7 +283,10 @@ export type ProfileFields = {
 export type WorkspaceDetail = {
   workspace: Workspace
   level: AccessLevel
+  /** Documents at the head commit. */
   records: Array<RecordSummary>
+  head: CommitSummary | null
+  commits: Array<CommitSummary>
   participants: Array<Participant>
   invitations: Array<Invitation>
   attestations: Array<Attestation>
@@ -255,9 +312,38 @@ export type VerificationParticipant = {
   publicKeyHex: string | null
   score: ScoreSnapshot | null
   attendance: Attestation | null
-  approvals: Array<{ recordId: string; attestation: Attestation }>
+  approval: ParticipantApproval | null
   profile: ProfileFields
   profileUpdatedAt: string | null
+}
+
+export type ParticipantApproval = {
+  attestation: Attestation
+  commitId: string
+  commitHashHex: string
+  commitSeq: number
+  /** False when later commits exist that this participant has not approved. */
+  current: boolean
+  documents: Array<{ documentId: string; leaves: LeafSet; witness: Witness }>
+}
+
+export type VerificationCommit = {
+  id: string
+  seq: number
+  hashHex: string
+  parentHashHex: string | null
+  kind: CommitKind
+  author: CommitAuthor
+  message: string
+  committedAt: string
+  tree: Array<TreeEntry>
+}
+
+export type VerificationDocument = RecordSummary & {
+  contentVisible: boolean
+  approvals: Array<{ handle: string; leaves: LeafSet; witness: Witness }>
+  /** Recomputed by the server; recompute it yourself with `gradeDocument()`. */
+  grade: GradeResult
 }
 
 export type VerificationPage = {
@@ -280,14 +366,15 @@ export type VerificationPage = {
   >
   participants: Array<VerificationParticipant>
   withdrawnCount: number
-  records: Array<
-    RecordSummary & { contentVisible: boolean; approvedBy: Array<string> }
-  >
+  head: VerificationCommit | null
+  commits: Array<VerificationCommit>
+  /** Documents at the head commit. */
+  documents: Array<VerificationDocument>
   anchoring: {
     anchored: number
     pending: number
     items: Array<{
-      itemKind: 'attestation' | 'record'
+      itemKind: 'attestation' | 'record' | 'commit'
       itemId: string
       batchId: string
       status: BatchStatus
@@ -369,5 +456,7 @@ export type TokenResponse = {
 }
 
 export type ListResponse<T> = { items: Array<T> }
+
+export type AnchorItemKind = 'attestation' | 'commit'
 
 export type { Receipt, ReceiptVerdict }

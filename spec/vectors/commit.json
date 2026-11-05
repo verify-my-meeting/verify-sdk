@@ -1,0 +1,138 @@
+{
+  "description": "Commit bodies, their RFC 8785 canonical form, and SHA-256 hashes. `unsortedInput` must normalize (tree sorted by doc, creators sorted, hashes lowercased) to the same hash as `commits[1]`.",
+  "commits": [
+    {
+      "body": {
+        "v": 1,
+        "workspace": "c0000000-0000-4000-8000-000000000003",
+        "seq": 1,
+        "parent": null,
+        "kind": "initial",
+        "author": {
+          "role": "owner",
+          "ref": null
+        },
+        "time": "2026-11-06T10:00:00.000Z",
+        "message": "",
+        "tree": [
+          {
+            "doc": "a0000000-0000-4000-8000-000000000001",
+            "kind": "text",
+            "label": "Transcript",
+            "root": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+            "leafCount": 3,
+            "segmentation": "v1",
+            "provenance": {
+              "type": "transcript",
+              "creators": ["owner"],
+              "created": "during",
+              "ai": "assisted",
+              "aiRole": "verbatim",
+              "note": "Otter export"
+            }
+          }
+        ]
+      },
+      "canonical": "{\"author\":{\"ref\":null,\"role\":\"owner\"},\"kind\":\"initial\",\"message\":\"\",\"parent\":null,\"seq\":1,\"time\":\"2026-11-06T10:00:00.000Z\",\"tree\":[{\"doc\":\"a0000000-0000-4000-8000-000000000001\",\"kind\":\"text\",\"label\":\"Transcript\",\"leafCount\":3,\"provenance\":{\"ai\":\"assisted\",\"aiRole\":\"verbatim\",\"created\":\"during\",\"creators\":[\"owner\"],\"note\":\"Otter export\",\"type\":\"transcript\"},\"root\":\"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"segmentation\":\"v1\"}],\"v\":1,\"workspace\":\"c0000000-0000-4000-8000-000000000003\"}",
+      "hashHex": "61eab0ddf978fb157964cb2092ad82f7dfeee208a6bb732de2c24c1cd25664fd"
+    },
+    {
+      "body": {
+        "v": 1,
+        "workspace": "c0000000-0000-4000-8000-000000000003",
+        "seq": 2,
+        "parent": "61eab0ddf978fb157964cb2092ad82f7dfeee208a6bb732de2c24c1cd25664fd",
+        "kind": "add-document",
+        "author": {
+          "role": "integrator",
+          "ref": "d0000000-0000-4000-8000-000000000004"
+        },
+        "time": "2026-11-06T11:00:00.000Z",
+        "message": "Add the recording",
+        "tree": [
+          {
+            "doc": "a0000000-0000-4000-8000-000000000001",
+            "kind": "text",
+            "label": "Transcript",
+            "root": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+            "leafCount": 3,
+            "segmentation": "v1",
+            "provenance": {
+              "type": "transcript",
+              "creators": ["owner"],
+              "created": "during",
+              "ai": "assisted",
+              "aiRole": "verbatim",
+              "note": "Otter export"
+            }
+          },
+          {
+            "doc": "b0000000-0000-4000-8000-000000000002",
+            "kind": "link",
+            "label": "Recording",
+            "root": "abababababababababababababababababababababababababababababababab",
+            "leafCount": 1,
+            "segmentation": null,
+            "provenance": {
+              "type": "recording",
+              "creators": ["owner", "participant"],
+              "created": "during",
+              "ai": "none"
+            }
+          }
+        ]
+      },
+      "canonical": "{\"author\":{\"ref\":\"d0000000-0000-4000-8000-000000000004\",\"role\":\"integrator\"},\"kind\":\"add-document\",\"message\":\"Add the recording\",\"parent\":\"61eab0ddf978fb157964cb2092ad82f7dfeee208a6bb732de2c24c1cd25664fd\",\"seq\":2,\"time\":\"2026-11-06T11:00:00.000Z\",\"tree\":[{\"doc\":\"a0000000-0000-4000-8000-000000000001\",\"kind\":\"text\",\"label\":\"Transcript\",\"leafCount\":3,\"provenance\":{\"ai\":\"assisted\",\"aiRole\":\"verbatim\",\"created\":\"during\",\"creators\":[\"owner\"],\"note\":\"Otter export\",\"type\":\"transcript\"},\"root\":\"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"segmentation\":\"v1\"},{\"doc\":\"b0000000-0000-4000-8000-000000000002\",\"kind\":\"link\",\"label\":\"Recording\",\"leafCount\":1,\"provenance\":{\"ai\":\"none\",\"created\":\"during\",\"creators\":[\"owner\",\"participant\"],\"type\":\"recording\"},\"root\":\"abababababababababababababababababababababababababababababababab\",\"segmentation\":null}],\"v\":1,\"workspace\":\"c0000000-0000-4000-8000-000000000003\"}",
+      "hashHex": "684625d5d7a4078fb1d3f7006e21d3b4d9104d0bf4ec3f732814bdb7a1bd0106"
+    }
+  ],
+  "unsortedInput": {
+    "v": 1,
+    "workspace": "c0000000-0000-4000-8000-000000000003",
+    "seq": 2,
+    "parent": "61EAB0DDF978FB157964CB2092AD82F7DFEEE208A6BB732DE2C24C1CD25664FD",
+    "kind": "add-document",
+    "author": {
+      "role": "integrator",
+      "ref": "d0000000-0000-4000-8000-000000000004"
+    },
+    "time": "2026-11-06T11:00:00.000Z",
+    "message": "Add the recording",
+    "tree": [
+      {
+        "doc": "b0000000-0000-4000-8000-000000000002",
+        "kind": "link",
+        "label": "Recording",
+        "root": "abababababababababababababababababababababababababababababababab",
+        "leafCount": 1,
+        "segmentation": null,
+        "provenance": {
+          "type": "recording",
+          "creators": ["participant", "owner"],
+          "created": "during",
+          "ai": "none"
+        }
+      },
+      {
+        "doc": "a0000000-0000-4000-8000-000000000001",
+        "kind": "text",
+        "label": "Transcript",
+        "root": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+        "leafCount": 3,
+        "segmentation": "v1",
+        "provenance": {
+          "type": "transcript",
+          "creators": ["owner"],
+          "created": "during",
+          "ai": "assisted",
+          "aiRole": "verbatim",
+          "note": "Otter export"
+        }
+      }
+    ]
+  },
+  "brokenChain": {
+    "description": "commits[1] with parent set to the zero hash; verifyChain must fail at seq 2 with reason parent",
+    "parent": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

@@ -1,27 +1,36 @@
 # VerifyMyMeeting protocol specification
 
-Version 1, 2026-11-05. Normative where it says "must". The reference
+Version 1.1, 2026-11-06 (commit chain, provenance, grade added to version 1
+of 2026-11-05). Normative where it says "must". The reference
 implementation of every computation here is `@verifymymeeting/sdk`
 (`packages/sdk/src/proofs`), and `vectors/` holds the shared test vectors
 that both the server and the SDK are tested against.
 
 - `openapi.yaml`: the REST API contract (OpenAPI 3.1).
-- `vectors/`: canonicalization, Merkle, and segmentation vectors.
+- `vectors/`: canonicalization, Merkle, segmentation, commit, and grade
+  vectors.
 
 ## 1. Objects
 
 - **Workspace**: one meeting. Owned by an account. Visibility `private`,
   `link`, or `public`; status `draft`, `open`, or `closed`.
-- **Record**: a `link` (URL plus optional SHA-256), a `hash` (SHA-256 only),
-  or `text` (uploaded transcript). Every record has an RFC 6962 Merkle root.
+- **Document**: one entry of the workspace's record package, identified by a
+  stable `documentId`. Its content at a commit is a **record** (one version):
+  a `link` (URL plus optional SHA-256), a `hash` (SHA-256 only), or `text`
+  (uploaded transcript). Every record has an RFC 6962 Merkle root. Every
+  document carries a provenance declaration (section 13).
+- **Commit**: one step of the workspace's linear, append-only history
+  (section 12): a tree of documents, the parent hash, author, time,
+  message, and kind.
 - **Participant**: an account's membership in one workspace, shown as a
   per-workspace handle (`Person #NNNN`) that is unlinkable across workspaces.
   Each participant has its own Ed25519 key pair; the public key appears on
   the verification page.
 - **Attestation**: a signed statement by a participant: `attendance`,
-  `record` approval, or `disclosure`. Append-only; a newer attestation of
-  the same kind (and record) supersedes the older for display.
-- **Batch**: an anchoring run over new attestation hashes and record roots.
+  `record` approval (of one commit, with a witness statement per document),
+  or `disclosure`. Append-only; a newer attestation of the same kind
+  supersedes the older for display.
+- **Batch**: an anchoring run over new attestation hashes and commit hashes.
 - **Receipt**: the inclusion proof of one item in one batch.
 
 ## 2. Canonicalization
@@ -91,8 +100,12 @@ Every payload carries:
 Kind-specific fields:
 
 - `attendance`: `mode: "full"`, or `mode: "range"` with `from` and `to`.
-- `record`: `record` (uuid), `root` (hex), `leaves`: `"all"` or an array
-  of inclusive `[start, end]` leaf index ranges the participant approves.
+- `record`: `commit` (hash hex), `seq`, and `approvals`: one entry per
+  document of that commit, in tree order, each `{ doc, root, leaves,
+witness }` where `leaves` is `"all"`, `"none"` (explicit exclusion), or an
+  array of inclusive `[start, end]` leaf index ranges, and `witness` is a
+  statement from section 13. An approval must list every document of the
+  commit, so the signed payload is complete.
 - `disclosure`: `public` and `viewer`, each the SHA-256 (hex) of the
   canonicalized profile fields for that level. The fields themselves are
   not in the payload.
@@ -126,8 +139,10 @@ of their attestations becomes a tombstone: `payload`, `canonical`,
 ## 9. Anchoring and receipts
 
 A batch is a Merkle tree (section 3) whose leaves are, in creation order,
-the `payloadHashHex` bytes of every live attestation and the `rootHex` bytes
-of every record not previously anchored. The batch root is submitted as a
+the `payloadHashHex` bytes of every live attestation and the `hashHex` bytes
+of every commit not previously anchored (batches made before 2026-11-06
+carried record roots instead; their receipts stay valid). A commit's receipt
+plus the chain proves the whole package history existed by the batch time. The batch root is submitted as a
 32-byte digest to an OpenTimestamps calendar (`POST /digest`); the returned
 pending proof is stored and served as base64. VerifyMyMeeting also signs
 `"vmm-batch:<batchId>:<rootHex>:<leafCount>"` (message = SHA-256 of that
@@ -170,5 +185,97 @@ server-side; handles are unlinkable across workspaces by construction.
 
 See `openapi.yaml`. The MCP server (`@verifymymeeting/mcp`) exposes
 `vmm_list_workspaces`, `vmm_create_workspace`, `vmm_get_workspace`,
-`vmm_attach_record`, `vmm_create_invitation`, `vmm_get_verification`, and
-`vmm_get_receipt`, each a thin wrapper over the corresponding endpoint.
+`vmm_attach_record`, `vmm_commit_records`, `vmm_get_history`,
+`vmm_create_invitation`, `vmm_get_verification`, and `vmm_get_receipt`, each
+a thin wrapper over the corresponding endpoint.
+
+## 12. Commits
+
+Each workspace has exactly one chain. A commit body is:
+
+```json
+{
+  "v": 1,
+  "workspace": "<workspace uuid>",
+  "seq": 2,
+  "parent": "<hash hex of commit seq-1, or null for seq 1>",
+  "kind": "initial" | "edit" | "comment" | "add-document" | "remove-document",
+  "author": { "role": "owner" | "integrator" | "participant", "ref": "<integrator id, handle, or null>" },
+  "time": "<ISO 8601 UTC>",
+  "message": "<free text>",
+  "tree": [
+    { "doc": "<document uuid>", "kind": "text", "label": "Transcript",
+      "root": "<record root hex>", "leafCount": 3, "segmentation": "v1",
+      "provenance": { ... section 13 ... } }
+  ]
+}
+```
+
+Normalization before hashing: `tree` sorted by `doc` (code-unit order),
+`root` and `parent` lowercased, `provenance.creators` sorted, and absent
+optional provenance fields omitted. Then:
+
+```
+canonical = canonicalize(body)          // RFC 8785, section 2
+hashHex   = hex(SHA-256(utf8(canonical)))
+```
+
+Rules a verifier checks (`verifyChain()` in the SDK): `seq` runs 1..n with
+no gaps; `parent` of commit n is the hash of commit n-1 (null for the
+first); every commit hashes to its stated `hashHex`. The chain is linear:
+no branches, no rewrites. Document content may change freely between
+commits; the server stores every record version and computes the diff.
+`vectors/commit.json` holds two commits, an unsorted input that must hash to
+the same value, and a broken-parent case.
+
+The export of a chain as a git repository whose commit messages carry these
+hashes is planned; the VMM hash, not a git hash, is what attestations name.
+
+## 13. Provenance declarations, witness statements, and the grade
+
+A **provenance declaration** is made by whoever adds a document and is part
+of the commit tree entry, so it is covered by the commit hash:
+
+| Field           | Values                                                                              |
+| --------------- | ----------------------------------------------------------------------------------- |
+| `type`          | `transcript`, `minutes`, `notes`, `recording`, `image`, `evidence`, `code`, `other` |
+| `creators`      | one or more of `owner`, `participant`, `other-human`                                |
+| `created`       | `before`, `during`, `after` (the meeting)                                           |
+| `ai`            | `none`, `assisted`, `generated`                                                     |
+| `aiRole`        | `verbatim`, `summary`, `enhanced`; required unless `ai` is `none`                   |
+| `evidenceDocId` | optional; an `evidence` document in the same commit                                 |
+| `note`          | optional, up to 280 characters                                                      |
+
+A **witness statement** is made by each approving participant per document
+inside the signed `record` attestation (section 6):
+
+| `witness`             | The participant states                                                                          |
+| --------------------- | ----------------------------------------------------------------------------------------------- |
+| `author`              | I made or co-made this during the meeting                                                       |
+| `witnessed`           | I saw or heard this being made during the meeting                                               |
+| `representative`      | It was derived from what happened and I agree it represents it                                  |
+| `inspired`            | It was produced from ideas raised in the meeting; I heard them raised but did not see this made |
+| `verified-prior`      | I took part in the meeting's verification of this prior artefact                                |
+| `told-by-participant` | Another participant said in the meeting that they made this before it                           |
+| `told-third-party`    | Another participant said in the meeting that someone else made this                             |
+| `none`                | I make no statement about its origin                                                            |
+
+The **human-involvement grade** of a document at a commit is derived, never
+stored or signed (`gradeDocument(provenance, witnesses)` in the SDK):
+
+1. `cap(declaration)`: `ungraded` if undeclared; `C` if `created` is
+   `before`; otherwise, if `ai` is `none`, or `assisted` with `aiRole`
+   `verbatim`: `A` when `created` is `during`, else `B`; otherwise `B`.
+2. Each statement's own grade: `author`, `witnessed` → `A`;
+   `representative` → `B`; `inspired`, `verified-prior`,
+   `told-by-participant`, `told-third-party` → `C`; `none` → `ungraded`.
+3. A statement's effective grade is the weaker of its own grade and the
+   cap. A statement stronger than a declared cap is a **mismatch**: flagged,
+   graded by the declaration.
+4. The document grade is the weakest effective grade among the approving
+   participants' statements at that commit (`leaves` not `none`); no
+   statements gives `ungraded`.
+
+Order: `A` > `B` > `C` > `ungraded`. `vectors/grade.json` holds the cases.
+`suggestWitness(declaration)` is the statement the attestation page
+pre-fills; it is a convenience, not part of the rule.
