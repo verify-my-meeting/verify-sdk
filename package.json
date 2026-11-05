@@ -3,12 +3,22 @@
   "private": true,
   "version": "0.0.0",
   "packageManager": "pnpm@10.33.0",
-  "engines": { "node": ">=22" },
-  "scripts": {
-    "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test",
-    "lint": "pnpm -r --if-present lint",
-    "build": "pnpm -r --if-present build"
+  "engines": {
+    "node": ">=22"
   },
-  "license": "Apache-2.0"
+  "scripts": {
+    "typecheck": "pnpm --filter @verifymymeeting/sdk build && pnpm -r typecheck",
+    "test": "pnpm --filter @verifymymeeting/sdk build && pnpm -r test",
+    "lint": "pnpm check",
+    "build": "pnpm -r build",
+    "format": "prettier --write .",
+    "check": "prettier --check ."
+  },
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0",
+    "@types/node": "^22.10.2"
+  }
 }

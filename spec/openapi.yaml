@@ -1,0 +1,1191 @@
+openapi: 3.1.0
+info:
+  title: VerifyMyMeeting API
+  version: '1'
+  description: |
+    Meeting attestation infrastructure. Workspaces hold records committed as
+    RFC 6962 Merkle trees; participants sign attendance, record approval, and
+    disclosure attestations with per-workspace Ed25519 keys and a Cubid
+    humanity-score snapshot; batches of attestation hashes and record roots
+    are anchored to OpenTimestamps.
+
+    Authentication: `Authorization: Bearer vmm_sk_...` (integrator API key,
+    acting as the integrator) or `Bearer vmm_ct_...` (consent token, acting on
+    behalf of the owner who approved the integrator). Verification pages,
+    receipts, and batches are readable without credentials. Attestation and
+    withdrawal are available only to a signed-in participant in the
+    VerifyMyMeeting web application and are therefore not in this document.
+
+    Errors use one shape: `{ "error": { "code", "message", "details?" } }`.
+    Every response carries `x-request-id`, `ratelimit-limit`,
+    `ratelimit-remaining`, and `ratelimit-reset` headers.
+servers:
+  - url: https://verifymymeeting.com
+    description: Production (placeholder hostname)
+security:
+  - bearer: []
+tags:
+  - name: workspaces
+  - name: records
+  - name: invitations
+  - name: participants
+  - name: attestations
+  - name: verification
+  - name: anchoring
+  - name: account
+  - name: oauth
+
+paths:
+  /api/v1/workspaces:
+    get:
+      tags: [workspaces]
+      summary: List workspaces owned by the caller
+      responses:
+        '200':
+          description: Workspaces
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Workspace' }
+        default: { $ref: '#/components/responses/Error' }
+    post:
+      tags: [workspaces]
+      summary: Create a workspace
+      description: Requires good standing. Consent tokens need the `workspaces:write` scope.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorkspaceInput' }
+      responses:
+        '200':
+          description: Created workspace
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Workspace' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/WorkspaceId' }
+      - name: key
+        in: query
+        description: Link token presented by a link holder
+        schema: { type: string }
+    get:
+      tags: [workspaces]
+      summary: Get a workspace
+      description: Owners receive the full detail; other callers receive a glimpse at their access level.
+      security: [{}, { bearer: [] }]
+      responses:
+        '200':
+          description: Workspace detail or glimpse
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: '#/components/schemas/WorkspaceDetail' }
+                  - { $ref: '#/components/schemas/WorkspaceGlimpse' }
+        default: { $ref: '#/components/responses/Error' }
+    patch:
+      tags: [workspaces]
+      summary: Update workspace metadata
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorkspaceInput' }
+      responses:
+        '200':
+          description: Updated workspace
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Workspace' }
+        default: { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [workspaces]
+      summary: Delete a workspace
+      description: Deletes records, profiles, and invitations and tombstones every attestation. Commitments remain.
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { deleted: { type: boolean, const: true } }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}/status:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    post:
+      tags: [workspaces]
+      summary: Change lifecycle status
+      description: Allowed transitions are draft to open, open to closed, closed to open.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: '#/components/schemas/WorkspaceStatus' }
+      responses:
+        '200':
+          description: Updated workspace
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Workspace' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}/visibility:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    post:
+      tags: [workspaces]
+      summary: Change visibility
+      description: |
+        Moving to `public` requires `acknowledgement` to equal exactly
+        "I understand that public pages are permanent". The first move away
+        from private returns the link token once.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [visibility]
+              properties:
+                visibility: { $ref: '#/components/schemas/Visibility' }
+                acknowledgement: { type: string }
+      responses:
+        '200':
+          description: Updated workspace and, when first created, the link token
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [workspace, linkToken]
+                properties:
+                  workspace: { $ref: '#/components/schemas/Workspace' }
+                  linkToken: { type: [string, 'null'] }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}/link:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    post:
+      tags: [workspaces]
+      summary: Rotate the link token
+      description: Previous link-visible URLs stop working.
+      responses:
+        '200':
+          description: New link token
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [linkToken]
+                properties: { linkToken: { type: string } }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}/records:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    get:
+      tags: [records]
+      summary: List records (owner)
+      responses:
+        '200':
+          description: Records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/RecordSummary' }
+        default: { $ref: '#/components/responses/Error' }
+    post:
+      tags: [records]
+      summary: Attach a record
+      description: |
+        `link`: URL with optional SHA-256. `hash`: SHA-256 only. `text`: UTF-8
+        plain text or Markdown, segmented into Merkle leaves (segmentation v1).
+        Link and hash records are single-leaf trees over the digest.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordInput' }
+      responses:
+        '200':
+          description: Created record with its Merkle root
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecordSummary' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}/records/{recordId}:
+    parameters:
+      - { $ref: '#/components/parameters/WorkspaceId' }
+      - name: recordId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: key
+        in: query
+        schema: { type: string }
+    get:
+      tags: [records]
+      summary: Read a record with its leaves
+      description: Segments are returned only when the caller's access level satisfies the record's content visibility.
+      security: [{}, { bearer: [] }]
+      responses:
+        '200':
+          description: Record content
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecordContent' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}/invitations:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    get:
+      tags: [invitations]
+      summary: List invitations (owner)
+      responses:
+        '200':
+          description: Invitations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Invitation' }
+        default: { $ref: '#/components/responses/Error' }
+    post:
+      tags: [invitations]
+      summary: Create an invitation link
+      description: Consent tokens need the `invitations:write` scope. The token and URL are returned once.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InvitationInput' }
+      responses:
+        '200':
+          description: Invitation with its one-time token and URL
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CreatedInvitation' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}/invitations/{invitationId}:
+    parameters:
+      - { $ref: '#/components/parameters/WorkspaceId' }
+      - name: invitationId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      tags: [invitations]
+      summary: Revoke an invitation
+      responses:
+        '200':
+          description: Revoked invitation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Invitation' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/invitations/{token}:
+    parameters:
+      - name: token
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [invitations]
+      summary: Preview an invitation
+      description: What the invitation page shows before sign-in.
+      security: [{}]
+      responses:
+        '200':
+          description: Preview
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvitationPreview' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}/participants:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    get:
+      tags: [participants]
+      summary: List participants (owner)
+      responses:
+        '200':
+          description: Participants
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Participant' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}/attestations:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    get:
+      tags: [attestations]
+      summary: List attestations (owner)
+      responses:
+        '200':
+          description: Attestations, append-only, including tombstones
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Attestation' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/verify/{key}:
+    parameters:
+      - name: key
+        in: path
+        required: true
+        description: Public slug, link token (`lnk_...`), or workspace id for signed-in viewers
+        schema: { type: string }
+    get:
+      tags: [verification]
+      summary: Verification page
+      security: [{}, { bearer: [] }]
+      responses:
+        '200':
+          description: Page model rendered at the caller's access level
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VerificationPage' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/receipts/{kind}/{id}:
+    parameters:
+      - name: kind
+        in: path
+        required: true
+        schema: { type: string, enum: [attestation, record] }
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [anchoring]
+      summary: Inclusion receipt
+      security: [{}]
+      responses:
+        '200':
+          description: Receipt and server-side verdict, or null when not yet anchored
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReceiptResponse' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/batches:
+    get:
+      tags: [anchoring]
+      summary: Transparency list of batches
+      security: [{}]
+      responses:
+        '200':
+          description: Batches and the service signing key
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BatchList' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/batches/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [anchoring]
+      summary: One batch
+      security: [{}]
+      responses:
+        '200':
+          description: Batch
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Batch' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/me:
+    get:
+      tags: [account]
+      summary: Who am I
+      security: [{}, { bearer: [] }]
+      responses:
+        '200':
+          description: Credential summary
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/oauth/token:
+    post:
+      tags: [oauth]
+      summary: Exchange an authorization code for a consent token
+      description: |
+        Final step of the OAuth 2.1 authorization-code flow with PKCE. The
+        owner is first sent to `/connect/authorize?client_id&redirect_uri&state&code_challenge&code_challenge_method=S256&scope`
+        on the VerifyMyMeeting web application and redirected back with `code`
+        and `state`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: '#/components/schemas/TokenRequest' }
+          application/json:
+            schema: { $ref: '#/components/schemas/TokenRequest' }
+      responses:
+        '200':
+          description: Consent token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenResponse' }
+        default: { $ref: '#/components/responses/Error' }
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      description: '`vmm_sk_...` integrator API key or `vmm_ct_...` consent token'
+  parameters:
+    WorkspaceId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+  schemas:
+    ApiError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - unauthorized
+                - forbidden
+                - not_found
+                - validation
+                - conflict
+                - limit_exceeded
+                - standing_required
+                - cubid_unavailable
+                - rate_limited
+                - feature_disabled
+                - invalid_state
+                - database_unavailable
+                - internal
+            message: { type: string }
+            details: {}
+    Visibility:
+      type: string
+      enum: [private, link, public]
+    WorkspaceStatus:
+      type: string
+      enum: [draft, open, closed]
+    AccessLevel:
+      type: string
+      enum: [none, public, link, viewer, owner]
+    ContentVisibility:
+      type: string
+      enum: [public, link, viewer]
+    Workspace:
+      type: object
+      required:
+        [
+          id,
+          ownerAccountId,
+          integratorId,
+          title,
+          description,
+          purpose,
+          scheduledStart,
+          actualStart,
+          durationMinutes,
+          timezone,
+          visibility,
+          status,
+          publicSlug,
+          minScore,
+          publicAckAt,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        ownerAccountId: { type: string, format: uuid }
+        integratorId: { type: [string, 'null'], format: uuid }
+        title: { type: string }
+        description: { type: string }
+        purpose: { type: string }
+        scheduledStart: { type: [string, 'null'], format: date-time }
+        actualStart: { type: [string, 'null'], format: date-time }
+        durationMinutes: { type: [integer, 'null'] }
+        timezone: { type: string }
+        visibility: { $ref: '#/components/schemas/Visibility' }
+        status: { $ref: '#/components/schemas/WorkspaceStatus' }
+        publicSlug: { type: [string, 'null'] }
+        minScore: { type: [number, 'null'] }
+        publicAckAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    WorkspaceInput:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000 }
+        purpose: { type: string, maxLength: 1000 }
+        scheduledStart: { type: [string, 'null'], format: date-time }
+        actualStart: { type: [string, 'null'], format: date-time }
+        durationMinutes: { type: [integer, 'null'], minimum: 1, maximum: 10080 }
+        timezone: { type: string, default: UTC }
+        minScore: { type: [number, 'null'], minimum: 0 }
+    WorkspaceGlimpse:
+      type: object
+      required: [workspace, level]
+      properties:
+        workspace:
+          type: object
+          required: [id, title, visibility, status]
+          properties:
+            id: { type: string, format: uuid }
+            title: { type: string }
+            visibility: { $ref: '#/components/schemas/Visibility' }
+            status: { $ref: '#/components/schemas/WorkspaceStatus' }
+        level: { $ref: '#/components/schemas/AccessLevel' }
+    WorkspaceDetail:
+      type: object
+      required:
+        [workspace, level, records, participants, invitations, attestations]
+      properties:
+        workspace: { $ref: '#/components/schemas/Workspace' }
+        level: { $ref: '#/components/schemas/AccessLevel' }
+        records:
+          type: array
+          items: { $ref: '#/components/schemas/RecordSummary' }
+        participants:
+          type: array
+          items: { $ref: '#/components/schemas/Participant' }
+        invitations:
+          type: array
+          items: { $ref: '#/components/schemas/Invitation' }
+        attestations:
+          type: array
+          items: { $ref: '#/components/schemas/Attestation' }
+    RecordSummary:
+      type: object
+      required:
+        [
+          id,
+          workspaceId,
+          kind,
+          label,
+          url,
+          hashHex,
+          contentBytes,
+          segmentationVersion,
+          leafCount,
+          rootHex,
+          version,
+          supersedesRecordId,
+          contentVisibility,
+          locked,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceId: { type: string, format: uuid }
+        kind: { type: string, enum: [link, hash, text] }
+        label: { type: string }
+        url: { type: [string, 'null'] }
+        hashHex: { type: [string, 'null'], description: SHA-256 hex }
+        contentBytes: { type: integer }
+        segmentationVersion: { type: [string, 'null'] }
+        leafCount: { type: integer }
+        rootHex: { type: string, description: RFC 6962 SHA-256 root }
+        version: { type: integer }
+        supersedesRecordId: { type: [string, 'null'], format: uuid }
+        contentVisibility: { $ref: '#/components/schemas/ContentVisibility' }
+        locked:
+          {
+            type: boolean,
+            description: True once any attestation references the record,
+          }
+        createdAt: { type: string, format: date-time }
+    RecordInput:
+      oneOf:
+        - type: object
+          required: [kind, url]
+          properties:
+            kind: { const: link }
+            url: { type: string, format: uri }
+            label: { type: string, maxLength: 200 }
+            hashHex: { type: string, pattern: '^[0-9a-fA-F]{64}$' }
+            contentVisibility:
+              { $ref: '#/components/schemas/ContentVisibility' }
+            supersedesRecordId: { type: string, format: uuid }
+        - type: object
+          required: [kind, label, hashHex]
+          properties:
+            kind: { const: hash }
+            label: { type: string, minLength: 1, maxLength: 200 }
+            hashHex: { type: string, pattern: '^[0-9a-fA-F]{64}$' }
+            contentVisibility:
+              { $ref: '#/components/schemas/ContentVisibility' }
+            supersedesRecordId: { type: string, format: uuid }
+        - type: object
+          required: [kind, text]
+          properties:
+            kind: { const: text }
+            text: { type: string, minLength: 1 }
+            label: { type: string, maxLength: 200 }
+            contentVisibility:
+              { $ref: '#/components/schemas/ContentVisibility' }
+            supersedesRecordId: { type: string, format: uuid }
+    RecordContent:
+      type: object
+      required: [record, segments, leaves]
+      properties:
+        record: { $ref: '#/components/schemas/RecordSummary' }
+        segments:
+          type: array
+          items:
+            type: object
+            required: [index, text, leafHash]
+            properties:
+              index: { type: integer }
+              text: { type: string }
+              leafHash: { type: string }
+        leaves:
+          type: array
+          items:
+            type: object
+            required: [index, leafHash]
+            properties:
+              index: { type: integer }
+              leafHash: { type: string }
+    Invitation:
+      type: object
+      required:
+        [
+          id,
+          workspaceId,
+          kind,
+          label,
+          maxUses,
+          uses,
+          expiresAt,
+          revokedAt,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceId: { type: string, format: uuid }
+        kind: { type: string, enum: [slot, open, viewer] }
+        label: { type: string }
+        maxUses: { type: integer }
+        uses: { type: integer }
+        expiresAt: { type: string, format: date-time }
+        revokedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    InvitationInput:
+      type: object
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [slot, open, viewer] }
+        label: { type: string, maxLength: 200 }
+        maxUses: { type: integer, minimum: 1, maximum: 10000 }
+    CreatedInvitation:
+      type: object
+      required: [invitation, token, url]
+      properties:
+        invitation: { $ref: '#/components/schemas/Invitation' }
+        token: { type: string }
+        url: { type: string, format: uri }
+    InvitationPreview:
+      type: object
+      required: [usable, reason, kind, expiresAt, workspace, signedIn]
+      properties:
+        usable: { type: boolean }
+        reason:
+          { type: string, enum: [ok, revoked, expired, exhausted, closed] }
+        kind: { type: string, enum: [slot, open, viewer] }
+        expiresAt: { type: string, format: date-time }
+        workspace:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            title: { type: string }
+            description: { type: string }
+            purpose: { type: string }
+            scheduledStart: { type: [string, 'null'], format: date-time }
+            actualStart: { type: [string, 'null'], format: date-time }
+            durationMinutes: { type: [integer, 'null'] }
+            timezone: { type: string }
+            status: { $ref: '#/components/schemas/WorkspaceStatus' }
+            minScore: { type: [number, 'null'] }
+        signedIn: { type: boolean }
+    Participant:
+      type: object
+      required:
+        [
+          id,
+          workspaceId,
+          handleNumber,
+          handle,
+          joinedAt,
+          withdrawnAt,
+          keyId,
+          publicKeyHex,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceId: { type: string, format: uuid }
+        handleNumber: { type: integer }
+        handle: { type: string, example: 'Person #4821' }
+        joinedAt: { type: string, format: date-time }
+        withdrawnAt: { type: [string, 'null'], format: date-time }
+        keyId: { type: [string, 'null'] }
+        publicKeyHex:
+          { type: [string, 'null'], description: Raw Ed25519 public key, hex }
+    ScoreSnapshot:
+      type: object
+      required: [value, schema, fetchedAt]
+      properties:
+        value: { type: number }
+        schema: { type: string }
+        fetchedAt: { type: string, format: date-time }
+    Attestation:
+      type: object
+      required:
+        [
+          id,
+          workspaceId,
+          participantId,
+          kind,
+          recordId,
+          payload,
+          payloadHashHex,
+          signatureB64,
+          keyId,
+          score,
+          supersedesId,
+          createdAt,
+          tombstonedAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceId: { type: string, format: uuid }
+        participantId: { type: string, format: uuid }
+        kind: { type: string, enum: [attendance, record, disclosure] }
+        recordId: { type: [string, 'null'], format: uuid }
+        payload:
+          description: Signed payload (see spec/README.md); null for tombstones
+          oneOf:
+            - { $ref: '#/components/schemas/AttestationPayload' }
+            - { type: 'null' }
+        payloadHashHex:
+          {
+            type: [string, 'null'],
+            description: SHA-256 of the RFC 8785 canonical payload,
+          }
+        signatureB64:
+          {
+            type: [string, 'null'],
+            description: Ed25519 signature over payloadHash,
+            base64,
+          }
+        keyId: { type: [string, 'null'] }
+        score:
+          oneOf:
+            - { $ref: '#/components/schemas/ScoreSnapshot' }
+            - { type: 'null' }
+        supersedesId: { type: [string, 'null'], format: uuid }
+        createdAt: { type: string, format: date-time }
+        tombstonedAt: { type: [string, 'null'], format: date-time }
+    AttestationPayload:
+      type: object
+      required: [v, workspace, handle, issuedAt, score, kind]
+      properties:
+        v: { const: 1 }
+        workspace: { type: string, format: uuid }
+        handle: { type: string }
+        issuedAt: { type: string, format: date-time }
+        score: { $ref: '#/components/schemas/ScoreSnapshot' }
+        kind: { type: string, enum: [attendance, record, disclosure] }
+        mode:
+          { type: string, enum: [full, range], description: attendance only }
+        from:
+          {
+            type: string,
+            format: date-time,
+            description: attendance range only,
+          }
+        to:
+          {
+            type: string,
+            format: date-time,
+            description: attendance range only,
+          }
+        record: { type: string, format: uuid, description: record only }
+        root: { type: string, description: record only }
+        leaves:
+          description: record only; "all" or inclusive [start, end] index ranges
+          oneOf:
+            - { const: all }
+            - type: array
+              items:
+                type: array
+                items: { type: integer }
+                minItems: 2
+                maxItems: 2
+        public:
+          {
+            type: string,
+            description: disclosure only; SHA-256 of the public profile,
+          }
+        viewer:
+          {
+            type: string,
+            description: disclosure only; SHA-256 of the viewer profile,
+          }
+    ProfileFields:
+      type: object
+      properties:
+        displayName: { type: string }
+        affiliation: { type: string }
+        contact: { type: string }
+        linkIdentity: { type: boolean }
+    VerificationParticipant:
+      type: object
+      required:
+        [
+          id,
+          handle,
+          joinedAt,
+          withdrawn,
+          keyId,
+          publicKeyHex,
+          score,
+          attendance,
+          approvals,
+          profile,
+          profileUpdatedAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        handle: { type: string }
+        joinedAt: { type: string, format: date-time }
+        withdrawn: { type: boolean }
+        keyId: { type: [string, 'null'] }
+        publicKeyHex: { type: [string, 'null'] }
+        score:
+          oneOf:
+            - { $ref: '#/components/schemas/ScoreSnapshot' }
+            - { type: 'null' }
+        attendance:
+          oneOf:
+            - { $ref: '#/components/schemas/Attestation' }
+            - { type: 'null' }
+        approvals:
+          type: array
+          items:
+            type: object
+            required: [recordId, attestation]
+            properties:
+              recordId: { type: string, format: uuid }
+              attestation: { $ref: '#/components/schemas/Attestation' }
+        profile: { $ref: '#/components/schemas/ProfileFields' }
+        profileUpdatedAt: { type: [string, 'null'], format: date-time }
+    VerificationPage:
+      type: object
+      required:
+        [
+          level,
+          workspace,
+          participants,
+          withdrawnCount,
+          records,
+          anchoring,
+          proves,
+          doesNotProve,
+        ]
+      properties:
+        level: { $ref: '#/components/schemas/AccessLevel' }
+        workspace:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            title: { type: string }
+            description: { type: string }
+            purpose: { type: string }
+            scheduledStart: { type: [string, 'null'], format: date-time }
+            actualStart: { type: [string, 'null'], format: date-time }
+            durationMinutes: { type: [integer, 'null'] }
+            timezone: { type: string }
+            visibility: { $ref: '#/components/schemas/Visibility' }
+            status: { $ref: '#/components/schemas/WorkspaceStatus' }
+            publicSlug: { type: [string, 'null'] }
+            minScore: { type: [number, 'null'] }
+            createdAt: { type: string, format: date-time }
+        participants:
+          type: array
+          items: { $ref: '#/components/schemas/VerificationParticipant' }
+        withdrawnCount: { type: integer }
+        records:
+          type: array
+          items:
+            allOf:
+              - { $ref: '#/components/schemas/RecordSummary' }
+              - type: object
+                required: [contentVisible, approvedBy]
+                properties:
+                  contentVisible: { type: boolean }
+                  approvedBy:
+                    type: array
+                    items: { type: string }
+        anchoring:
+          type: object
+          required: [anchored, pending, items]
+          properties:
+            anchored: { type: integer }
+            pending: { type: integer }
+            items:
+              type: array
+              items:
+                type: object
+                required: [itemKind, itemId, batchId, status]
+                properties:
+                  itemKind: { type: string, enum: [attestation, record] }
+                  itemId: { type: string, format: uuid }
+                  batchId: { type: string, format: uuid }
+                  status: { $ref: '#/components/schemas/BatchStatus' }
+        proves:
+          type: array
+          items: { type: string }
+        doesNotProve:
+          type: array
+          items: { type: string }
+    AuditStep:
+      type: object
+      required: [hash, side]
+      properties:
+        hash: { type: string }
+        side: { type: string, enum: [left, right] }
+    Receipt:
+      type: object
+      required: [v, batch, root, index, path, item, ledger, service]
+      properties:
+        v: { const: 1 }
+        batch: { type: string, format: uuid }
+        root: { type: string }
+        index: { type: integer }
+        path:
+          type: array
+          items: { $ref: '#/components/schemas/AuditStep' }
+        item:
+          type: object
+          required: [kind, id, leafHash]
+          properties:
+            kind: { type: string, enum: [attestation, record] }
+            id: { type: string, format: uuid }
+            leafHash: { type: string }
+        ledger:
+          type: object
+          required: [kind, calendar, proof, status, submittedAt]
+          properties:
+            kind: { type: string, enum: [opentimestamps, none] }
+            calendar: { type: [string, 'null'] }
+            proof:
+              {
+                type: [string, 'null'],
+                description: OpenTimestamps proof bytes,
+                base64,
+              }
+            status:
+              { type: string, enum: [submitted, confirmed, pending, failed] }
+            submittedAt: { type: [string, 'null'], format: date-time }
+        service:
+          type: object
+          required: [keyId, signature]
+          properties:
+            keyId: { type: [string, 'null'] }
+            signature: { type: [string, 'null'] }
+    ReceiptResponse:
+      oneOf:
+        - type: object
+          required: [receipt, verdict]
+          properties:
+            receipt: { type: 'null' }
+            verdict: { const: pending }
+        - type: object
+          required: [receipt, verdict, inclusion]
+          properties:
+            receipt: { $ref: '#/components/schemas/Receipt' }
+            verdict: { type: string, enum: [valid, invalid, pending] }
+            inclusion: { type: boolean }
+    BatchStatus:
+      type: string
+      enum: [building, submitted, confirmed, failed]
+    Batch:
+      type: object
+      required:
+        [
+          id,
+          createdAt,
+          rootHex,
+          leafCount,
+          ledgerKind,
+          calendarUrl,
+          status,
+          submittedAt,
+          confirmedAt,
+          error,
+          serviceSignatureB64,
+          serviceKeyId,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        rootHex: { type: string }
+        leafCount: { type: integer }
+        ledgerKind: { type: string }
+        calendarUrl: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/BatchStatus' }
+        submittedAt: { type: [string, 'null'], format: date-time }
+        confirmedAt: { type: [string, 'null'], format: date-time }
+        error: { type: [string, 'null'] }
+        serviceSignatureB64:
+          {
+            type: [string, 'null'],
+            description: 'Ed25519 over sha256("vmm-batch:<id>:<root>:<leafCount>")',
+          }
+        serviceKeyId: { type: [string, 'null'] }
+    BatchList:
+      type: object
+      required: [serviceKey, items]
+      properties:
+        serviceKey:
+          type: object
+          required: [keyId, publicKeyHex]
+          properties:
+            keyId: { type: string }
+            publicKeyHex: { type: string }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Batch' }
+    Account:
+      type: object
+      required: [id, isOwner, isAdmin, createdAt, lastSeenAt, hasCubidUserId]
+      properties:
+        id: { type: string, format: uuid }
+        isOwner: { type: boolean }
+        isAdmin: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        lastSeenAt: { type: string, format: date-time }
+        hasCubidUserId: { type: boolean }
+    Me:
+      oneOf:
+        - type: object
+          required: [authenticated]
+          properties:
+            authenticated: { const: false }
+        - type: object
+          required: [authenticated, credential, integratorId]
+          properties:
+            authenticated: { const: true }
+            credential: { type: string, enum: [api_key, consent] }
+            integratorId: { type: string, format: uuid }
+        - type: object
+          required:
+            [
+              authenticated,
+              credential,
+              account,
+              owned,
+              participating,
+              connections,
+            ]
+          properties:
+            authenticated: { const: true }
+            credential: { const: session }
+            account: { $ref: '#/components/schemas/Account' }
+            owned:
+              type: array
+              items: { $ref: '#/components/schemas/Workspace' }
+            participating:
+              type: array
+              items: { $ref: '#/components/schemas/Workspace' }
+            connections:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  integratorId: { type: string, format: uuid }
+                  integratorName: { type: string }
+                  scopes:
+                    type: array
+                    items: { type: string }
+                  createdAt: { type: string, format: date-time }
+                  lastUsedAt: { type: [string, 'null'], format: date-time }
+                  revokedAt: { type: [string, 'null'], format: date-time }
+    TokenRequest:
+      type: object
+      required: [grant_type, code, code_verifier, client_id, redirect_uri]
+      properties:
+        grant_type: { const: authorization_code }
+        code: { type: string }
+        code_verifier: { type: string, minLength: 43, maxLength: 128 }
+        client_id: { type: string, format: uuid }
+        redirect_uri: { type: string, format: uri }
+    TokenResponse:
+      type: object
+      required: [access_token, token_type, scope]
+      properties:
+        access_token: { type: string, description: '`vmm_ct_...`' }
+        token_type: { const: Bearer }
+        scope:
+          {
+            type: string,
+            description: Space-separated scopes from workspaces:read,
+            workspaces:write,
+            invitations:write,
+          }

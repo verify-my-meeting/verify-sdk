@@ -1,0 +1,34 @@
+{
+  "description": "RFC 8785 canonicalization vectors. input is the JSON value; expected is the canonical string.",
+  "cases": [
+    {
+      "input": {
+        "b": 1,
+        "a": [
+          3,
+          {
+            "z": true,
+            "y": null
+          }
+        ]
+      },
+      "expected": "{\"a\":[3,{\"y\":null,\"z\":true}],\"b\":1}"
+    },
+    {
+      "input": {
+        "n": 1e21,
+        "m": 1e-6,
+        "s": "é\n\""
+      },
+      "expected": "{\"m\":0.000001,\"n\":1e+21,\"s\":\"é\\n\\\"\"}"
+    },
+    {
+      "input": {
+        "é": 1,
+        "z": 2,
+        "A": 3
+      },
+      "expected": "{\"A\":3,\"z\":2,\"é\":1}"
+    }
+  ]
+}

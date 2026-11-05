@@ -1,0 +1,26 @@
+{
+  "description": "Segmentation v1 vectors: input text, expected segments (as strings), and leaf bytes of one segment as UTF-8 string.",
+  "version": "v1",
+  "cases": [
+    {
+      "text": "Alice: Hello there.\r\nBob: Hi Alice,\nhow are you?\n\nAlice: Fine.\n",
+      "segments": [
+        "Alice: Hello there.",
+        "Bob: Hi Alice,\nhow are you?",
+        "Alice: Fine."
+      ],
+      "leaf": {
+        "index": 1,
+        "utf8": "1\u001fv1\u001fBob: Hi Alice,\nhow are you?"
+      }
+    },
+    {
+      "text": "Första stycket.\n\n\nAndra – stycket.\nFortsätter.\n",
+      "segments": ["Första stycket.", "Andra – stycket.\nFortsätter."]
+    },
+    {
+      "text": "  \n\n ",
+      "segments": []
+    }
+  ]
+}
