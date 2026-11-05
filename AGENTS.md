@@ -9,4 +9,4 @@ keep server internals, credentials, and private roadmap out.
 - Written against Web `Request`/`Response` and plain TypeScript; no framework
   coupling. `@verifymymeeting/react` depends on React only.
 - Record work in `agent-context/session-log/` before each commit.
-- Related repos (same org, private): `verifymymeeting`, `verifymyresearch`, `verify-docs`.
+- Related repos (same org, private): `verifymymeeting`, `verifymyresearch`, `verify-private-docs`.
