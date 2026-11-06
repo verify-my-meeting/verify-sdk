@@ -290,3 +290,207 @@ stored or signed (`gradeDocument(provenance, witnesses)` in the SDK):
 Order: `A` > `B` > `C` > `ungraded`. `vectors/grade.json` holds the cases.
 `suggestWitness(declaration)` is the statement the attestation page
 pre-fills; it is a convenience, not part of the rule.
+
+## 14. vCon extension `verifymymeeting`
+
+VerifyMyMeeting exports a workspace as an IETF vCon
+(`draft-ietf-vcon-vcon-core-05`, syntax version `0.5.0`; the package
+`@verifymymeeting/vcon` pins the revision in `DRAFT_REVISION`). The vCon is
+the container; this extension is the verification layer inside it. Until
+the core draft's registry exists at IANA, this section is the extension's
+specification document.
+
+- **Extension name**: `verifymymeeting`. It appears in `extensions` of
+  every vCon that uses it and never in `critical`.
+- **Parameters**: none. The extension defines no new parameters, objects,
+  type tokens or encodings. Every VerifyMyMeeting object is an Attachment
+  Object (draft section 4.6) with a `purpose` from the table below, an
+  inline JSON body (`encoding: "json"`), the media type
+  `application/vnd.verifymymeeting.<kind>+json`, `start`, `party` set to
+  the party the object belongs to, and `dialog` pointing at the document
+  it is about when that document is a Dialog Object, otherwise `session`.
+- **Compatibility**: Compatible under all conditions. A reader that does
+  not know the extension sees parties, dialog, analysis, sessions and
+  ordinary attachments, and processes the conversation correctly by
+  ignoring the attachment bodies. No existing semantics are changed.
+- **Privacy**: an attachment body may carry a handle, a humanity-score
+  snapshot, and, in `identity` and `consent` records, personal data the
+  participant chose to disclose. VerifyMyMeeting redacts by omission
+  (section 15.5); `redacted_strings` is not used, and a redactor that
+  removes an attachment removes the whole object.
+- **External references**: none beyond the core `url` + `content_hash`
+  pairs of the documents themselves.
+
+| `purpose`                     | Body (`v: 1` unless noted)                                                                                                                                                                                                                                                   |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `verifymymeeting/attestation` | `{ id, kind, payload, payloadHashHex, signatureB64, keyId, publicKeyHex, score, supersedesId, createdAt, tombstonedAt }`: one attestation (section 6) with its signature (section 7) and score snapshot. Tombstones carry nulls.                                             |
+| `verifymymeeting/provenance`  | `{ doc, label, kind, contentVisibility, entry: { array, index } \| null, provenance, witnesses: [{ handle, witness, leaves }] }`: a document's declaration (section 13) and the witness statements of the approving participants, with where the document sits in this vCon. |
+| `verifymymeeting/commitment`  | `{ hashHex, body, leaves? }`: the commit this vCon renders (section 12), its hashed body with the tree of Merkle roots, and optionally the leaf hashes per document id.                                                                                                      |
+| `verifymymeeting/receipt`     | A receipt object as in section 9 (`v: 2`).                                                                                                                                                                                                                                   |
+| `verifymymeeting/consent`     | `{ handle, entries: [{ scope, to, at, fields? }] }`: what the participant disclosed or granted, to whom, and when.                                                                                                                                                           |
+| `verifymymeeting/identity`    | `{ handle, identifiers: [{ kind, value, verifiedBy: "cubid", verifiedAt?, status }], displayName?, affiliation? }`: Cubid-verified identifiers the participant disclosed at this level, plus self-declared labels.                                                           |
+
+Verification rules a VerifyMyMeeting-aware reader applies, each with the
+SDK function that implements it:
+
+1. The JWS signature of the signed form verifies against a key in
+   `https://verifymymeeting.com/.well-known/jwks.json` named by `kid`, and
+   the `uuid` header equals the payload's `uuid` (`verifyVcon`).
+2. The commitment's `body` hashes to its `hashHex` (`verifyCommitHash`),
+   `body.seq`, `body.parent` and `body.workspace` are consistent with the
+   `amended_from` chain, and every tree entry has a provenance attachment.
+3. Each attestation with a payload verifies with `verifySignature` over
+   `canonicalize(payload)` and its `publicKeyHex`; `record` attestations
+   name the commitment's `hashHex`; the witness statements in the
+   provenance attachments are exactly those approvals.
+4. Each receipt verifies with `verifyReceipt`, and its item is an
+   attestation or the commit of this vCon.
+5. Every document with `url` or inline content verifies against its
+   `content_hash` (`verifyContentHash`), and a `text` document's segments
+   recompute the Merkle root in the commitment (`textRecordCommitment`).
+6. Parties with `validation: "verifymymeeting"` are vouched for by the
+   signing domain only to the extent of their attestations: the identity
+   attachment names Cubid as the verifier of each identifier, and `name`
+   is a verified name only when the identity record lists a `name`
+   identifier with status `verified`.
+
+## 15. vCon mapping (`vmm-vcon-mapping` 1)
+
+The projection of one workspace commit onto a vCon, implemented by
+`toVcon`, `redactVcon` and `fromVcon` in `@verifymymeeting/vcon`. It is
+deterministic: the same input renders byte-identical JSON. Exports state
+`VMM_MAPPING_VERSION`; a later revision of the draft or of these rules
+increments it.
+
+### 15.1 Identity
+
+- `uuid` is a version 5 UUID (RFC 9562) of the lowercase commit hash under
+  the namespace `VMM_VCON_NAMESPACE =
+71a32ea6-9a91-57a1-865b-62e4bff8c148`, itself
+  `uuidv5(DNS namespace, "verifymymeeting.com/vcon")`. A lower level uses
+  the name `<commit hash>:<level>`. Re-rendering a commit at a level gives
+  the same uuid. (The draft recommends version 8 time-based UUIDs; that is
+  a SHOULD, and stability under re-rendering matters more here.)
+- `vcon: "0.5.0"`, `extensions: ["verifymymeeting"]`, no `critical`.
+- `created_at` is the commit time; `updated_at` is the render time;
+  `subject` is the workspace title.
+- One vCon per commit. At owner level, commit n > 1 carries `amended_from:
+{ uuid: <uuid of commit n-1>, url?, content_hash? }` where `content_hash`
+  is over the previous commit's signed form when the renderer has it.
+  Attestations and receipts do not create versions; the vCon of a commit
+  includes every attendance and disclosure attestation, every `record`
+  attestation naming that commit, and every receipt known at render time.
+
+### 15.2 Parties and sessions
+
+- `parties[0]` is the owner: `{ uuid: "owner", type: "person",
+validation: "verifymymeeting", name?, org? }`.
+- One party per participant, ordered by handle: `uuid` = handle, `type` =
+  `person`, `validation` = `verifymymeeting`, `name` = the Cubid-verified
+  name when disclosed, else the self-declared display name, else
+  `anonymous`; `mailto` and `tel` only from verified, disclosed
+  identifiers; `org` from the disclosed affiliation. Social accounts, the
+  status of each identifier and the self-declared labels go in the
+  `identity` attachment. Withdrawn participants remain as `anonymous`
+  parties (their attestations are tombstones).
+- The last party is the service: `{ uuid: "verifymymeeting.com", type:
+"organization", name: "VerifyMyMeeting" }`, the `party` of receipts.
+- Exactly one Session Object (the draft requires one when `dialog` is
+  non-empty): `start` = actual start, else scheduled start, else commit
+  time; `duration` = the scheduled minutes in seconds; `parties` = owner
+  first (the originator), then the participants; `dialog` = every dialog
+  index. `events` are never generated.
+
+### 15.3 Documents
+
+Tree entries are taken in commit-tree order (sorted by document id). Their
+placement follows the provenance declaration:
+
+| Declaration                             | vCon entry                                                                                                                                                                                |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type: transcript`                      | `dialog` of type `text`, `parties` = all participants                                                                                                                                     |
+| `type: recording`                       | `dialog` of type `recording`, `parties` = all participants                                                                                                                                |
+| `type: minutes` or `notes`, `ai` ≠ none | `analysis` of type `transcript` (`aiRole: verbatim`) or `summary`, `vendor`/`product`/`schema` from the record's tool (`vendor: "unknown"` when not given), `dialog` = every dialog index |
+| anything else                           | `attachments` with `purpose` = the declaration type, `party` = the party whose commit added that document version, `session: 0`                                                           |
+
+`incomplete` dialog is never produced. Content at a level:
+
+- A `text` document disclosed at the level: inline `body` with
+  `encoding: "none"` and `mediatype: text/plain` when the text is supplied,
+  else `url` = `<contentBaseUrl>/<document id>`; in both cases
+  `content_hash` = `sha512-` over the UTF-8 bytes.
+- A `link` document with an owner-supplied digest: `url` and
+  `content_hash` in the supplied algorithm (`sha512-` or `sha256-`).
+  Without a digest the URL is the content: inline `body` = the URL,
+  `encoding: "none"`, `mediatype: text/uri-list`, matching the commitment
+  to the URL bytes (section 4).
+- A `hash` document: `content_hash` only.
+- A document not disclosed at the level keeps only its `content_hash` (for
+  a hash-less link, `sha512-` over the URL bytes) and no `mediatype`.
+
+### 15.4 Extension attachments
+
+In this order: one `provenance` per tree entry (`party` = the adder,
+`dialog` = the entry's index when it is a dialog, else `session: 0`,
+`start` = commit time); the `commitment` (`party` = the commit author,
+`leaves` only at owner and viewer level); attestations ordered by creation
+time then id (`party` = the participant); receipts ordered by item kind,
+item id and batch (`party` = the service); consents at owner and viewer
+level (`party` = the participant); identities for every participant who
+disclosed anything at the level.
+
+### 15.5 Levels and redaction
+
+The owner-level document is rendered and stored at commit time. Lower
+levels (`viewer`, `link`, `public`) are derived from it by omission and
+carry `redacted_from: { uuid: <owner-level uuid>, type, url?, content_hash?
+}` instead of `amended_from`; `type` is `UNSPECIFIED` for `viewer` and
+`CONTACT_INFO` below it. `redactVcon(owner, level)` and
+`toVcon(input, { level })` agree byte for byte:
+
+- `viewer`: nothing else changes (viewer and owner see the same profile
+  level and every document).
+- `link` and `public`: participant parties collapse to `anonymous` unless
+  the level's disclosed profile is supplied; documents whose
+  `contentVisibility` is above the level lose `body`, `encoding`, `url`,
+  `filename` and `mediatype`; `identity` and `consent` attachments and the
+  commitment's `leaves` are dropped. `redacted_strings` is never used.
+
+### 15.6 Signing
+
+Every export is signed by the service key as a JWS General JSON
+Serialization: protected header `{ alg: "EdDSA", kid, uuid, cty:
+"application/vcon" }` (`application/vcon+gzip` for a compressed payload),
+no unprotected header. Keys are published at `/.well-known/jwks.json` as
+`{ kty: "OKP", crv: "Ed25519", x, kid, alg: "EdDSA", use: "sig" }`. The
+draft requires `x5c` or `x5u`; neither is emitted until an interoperability
+partner needs a certificate chain, which can be added to the unprotected
+header without changing a signature. The unsigned form is available for
+reading and diffing. No JWE.
+
+### 15.7 Import
+
+`fromVcon` rejects unknown `critical` tokens and returns a plan:
+
+- `subject` → workspace title; `parties` → participant slots with the
+  disclosed `name`, `org`, `mailto` and `tel`; a party with `validation:
+"verifymymeeting"` is recognized as the owner (`uuid: "owner"`), a
+  participant (`uuid` = handle) or the service.
+- Each non-empty, non-`incomplete` `dialog`, each `analysis` and each
+  non-extension `attachments` entry becomes a `DocumentInput`: inline
+  string content → `text`; inline `text/uri-list` → `link` without a
+  digest; inline binary → `hash` of the decoded bytes; `url` +
+  `content_hash` → `link` with `hashHex`/`hashAlg` from the first
+  supported token; `content_hash` alone → `hash`.
+- The provenance declaration comes from the `provenance` attachment when
+  the vCon is a VerifyMyMeeting export (with the original document id and
+  label); otherwise it is derived: `dialog` `text` → `transcript`,
+  `recording` → `recording`, both `created: during`, `ai: none`, creators
+  from the party roles of `parties` (`other-human` when unknown);
+  `analysis` `transcript` → `transcript` with `ai: generated`, `aiRole:
+verbatim`, other types → `notes` with `aiRole: summary` (for `summary`)
+  or `enhanced`, `note` = vendor, product and schema; attachments →
+  the `purpose` when it is a declaration type, else `image` for `image/*`,
+  else `other`.
+- `sessions`, `events` and `redacted_strings` are preserved as given and
+  not interpreted.

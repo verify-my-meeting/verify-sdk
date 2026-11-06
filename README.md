@@ -6,12 +6,13 @@ VerifyMyMeeting lets a group of people prove that they met, for how long, and
 which version of the record each of them endorses, with participants
 identified by an anonymized handle and a Cubid humanity score by default.
 
-| Package                  | Purpose                                                                                 |
-| ------------------------ | --------------------------------------------------------------------------------------- |
-| `@verifymymeeting/sdk`   | Typed API client, protocol types, and browser-safe proof verification                   |
-| `@verifymymeeting/mcp`   | MCP server exposing workspaces, records, invitations, and verification lookups as tools |
-| `@verifymymeeting/react` | Embeddable sign-up and attestation component (planned, placeholder)                     |
-| `spec/`                  | Protocol specification, OpenAPI contract, and shared test vectors                       |
+| Package                  | Purpose                                                                                              |
+| ------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `@verifymymeeting/sdk`   | Typed API client, protocol types, and browser-safe proof verification                                |
+| `@verifymymeeting/mcp`   | MCP server exposing workspaces, records, invitations, and verification lookups as tools              |
+| `@verifymymeeting/vcon`  | IETF vCon (draft core-05) types, validator, JWS signing, the `verifymymeeting` extension and mapping |
+| `@verifymymeeting/react` | Embeddable sign-up and attestation component (planned, placeholder)                                  |
+| `spec/`                  | Protocol specification, OpenAPI contract, and shared test vectors                                    |
 
 Status: pre-release. Nothing is published to npm yet; the `@verifymymeeting`
 scope is registered at first publish.
