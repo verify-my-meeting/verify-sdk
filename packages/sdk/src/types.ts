@@ -447,7 +447,48 @@ export type Me =
     }
 
 export type ConsentScope =
-  'workspaces:read' | 'workspaces:write' | 'invitations:write'
+  | 'workspaces:read'
+  | 'workspaces:write'
+  | 'invitations:write'
+  /** Read the workspaces the consenting account attested in (integrators
+   * such as VerifyMyResearch showing a participant their studies). */
+  | 'participant:read'
+
+/** `POST /workspaces/aggregate`: counts across workspaces the caller owns. */
+export type WorkspaceAggregate = {
+  /** Workspace ids that were counted. */
+  workspaces: Array<string>
+  /** Ids the caller may not read; they are left out of the counts. */
+  unavailable: Array<string>
+  /** Distinct humans (internal participant identity) across the set. */
+  distinctParticipants: number
+  /** Lowest attested score snapshot across the set, if any. */
+  lowestScore: number | null
+  withdrawals: number
+  attendanceAttestations: number
+  recordApprovals: number
+}
+
+/** `GET /me/workspaces` under `participant:read`: the caller's participation. */
+export type Participation = {
+  workspace: Pick<
+    Workspace,
+    | 'id'
+    | 'title'
+    | 'scheduledStart'
+    | 'actualStart'
+    | 'durationMinutes'
+    | 'timezone'
+    | 'status'
+    | 'visibility'
+  >
+  participantId: string
+  handleNumber: number
+  handle: string
+  joinedAt: string
+  attendance: boolean
+  approval: boolean
+}
 
 export type TokenResponse = {
   access_token: string

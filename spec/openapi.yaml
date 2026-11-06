@@ -540,6 +540,125 @@ paths:
               schema: { $ref: '#/components/schemas/Me' }
         default: { $ref: '#/components/responses/Error' }
 
+  /api/v1/me/workspaces:
+    get:
+      tags: [account]
+      summary: Workspaces the caller attested in
+      description: |
+        For consent tokens with the `participant:read` scope (and sessions).
+        Integrators such as VerifyMyResearch use it to show a participant
+        which studies include their meetings. Returns the caller's own
+        handle per workspace and attestation flags; nothing about other
+        participants.
+      security: [{ bearer: [] }]
+      responses:
+        '200':
+          description: Participation list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [
+                          workspace,
+                          participantId,
+                          handleNumber,
+                          handle,
+                          joinedAt,
+                          attendance,
+                          approval,
+                        ]
+                      properties:
+                        workspace:
+                          type: object
+                          properties:
+                            id: { type: string, format: uuid }
+                            title: { type: string }
+                            scheduledStart:
+                              {
+                                type: string,
+                                format: date-time,
+                                nullable: true,
+                              }
+                            actualStart:
+                              {
+                                type: string,
+                                format: date-time,
+                                nullable: true,
+                              }
+                            durationMinutes: { type: integer, nullable: true }
+                            timezone: { type: string }
+                            status:
+                              { type: string, enum: [draft, open, closed] }
+                            visibility:
+                              { type: string, enum: [private, link, public] }
+                        participantId: { type: string, format: uuid }
+                        handleNumber: { type: integer }
+                        handle: { type: string }
+                        joinedAt: { type: string, format: date-time }
+                        attendance: { type: boolean }
+                        approval: { type: boolean }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/aggregate:
+    post:
+      tags: [workspaces]
+      summary: Counts across workspaces the caller owns
+      description: |
+        Distinct participants (by VerifyMyMeeting's internal identity, never
+        by handle), lowest score snapshot, withdrawals, and attestation
+        counts across a set of workspaces. Workspaces the caller does not
+        own are listed under `unavailable` and left out of the counts.
+        Requires `workspaces:read` on a consent token.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workspaceIds]
+              properties:
+                workspaceIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  items: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Aggregate counts
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  [
+                    workspaces,
+                    unavailable,
+                    distinctParticipants,
+                    lowestScore,
+                    withdrawals,
+                    attendanceAttestations,
+                    recordApprovals,
+                  ]
+                properties:
+                  workspaces:
+                    { type: array, items: { type: string, format: uuid } }
+                  unavailable:
+                    { type: array, items: { type: string, format: uuid } }
+                  distinctParticipants: { type: integer }
+                  lowestScore: { type: number, nullable: true }
+                  withdrawals: { type: integer }
+                  attendanceAttestations: { type: integer }
+                  recordApprovals: { type: integer }
+        default: { $ref: '#/components/responses/Error' }
+
   /api/v1/oauth/token:
     post:
       tags: [oauth]

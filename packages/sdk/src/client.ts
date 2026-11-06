@@ -25,6 +25,7 @@ import type {
   ListResponse,
   Me,
   Participant,
+  Participation,
   RecordContent,
   RecordInput,
   RecordSummary,
@@ -34,6 +35,7 @@ import type {
   VisibilityResult,
   Visibility,
   Workspace,
+  WorkspaceAggregate,
   WorkspaceDetail,
   WorkspaceGlimpse,
   WorkspaceInput,
@@ -141,6 +143,15 @@ export function createClient(options: ClientOptions) {
       }),
     rotateLink: (id: string) =>
       request<{ linkToken: string }>('POST', `/api/v1/workspaces/${id}/link`),
+    /**
+     * Counts across workspaces the caller owns: distinct participants by
+     * VMM's internal identity, lowest score, withdrawals. Handles never
+     * cross; integrators use this for study-level lines.
+     */
+    aggregate: (workspaceIds: Array<string>) =>
+      request<WorkspaceAggregate>('POST', '/api/v1/workspaces/aggregate', {
+        workspaceIds,
+      }),
   }
 
   const records = {
@@ -286,6 +297,9 @@ export function createClient(options: ClientOptions) {
     receipt: (kind: 'attestation' | 'commit', id: string) =>
       request<ReceiptResponse>('GET', `/api/v1/receipts/${kind}/${id}`),
     me: () => request<Me>('GET', '/api/v1/me'),
+    /** Workspaces the consenting account attested in (`participant:read`). */
+    participation: () =>
+      request<ListResponse<Participation>>('GET', '/api/v1/me/workspaces'),
     /** Rate-limit headers from the most recent response. */
     get rateLimit(): RateLimitInfo {
       return lastRateLimit
