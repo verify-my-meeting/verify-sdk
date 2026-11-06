@@ -7,7 +7,7 @@ decided and documents it in `spec/openapi.yaml` and `spec/README.md`
 section 11.
 
 - `@verifymymeeting/sdk` 0.3.0: `client.vcon.export(workspaceId, { commit?,
-  form? })`, `client.vcon.exportVerification(key, { form? })` (signed and
+form? })`, `client.vcon.exportVerification(key, { form? })` (signed and
   unsigned return the parsed JSON, `gzip` returns a `Uint8Array`; `Accept`
   is set per form and `form` is also sent as a query parameter when given),
   `client.vcon.import(input)` (`{ vcon, workspaceId?, message? }` as JSON,
@@ -22,8 +22,8 @@ section 11.
   `value`, `status: 'verified'`, `verifiedBy: 'cubid'`, `syncedAt`). The
   SDK still imports nothing from the vcon package.
 - `@verifymymeeting/vcon` 0.1.0: new `src/client.ts` with `exportVcon(client,
-  workspaceId, { commit? })` → `{ signed, vcon }`, `verifyExport(signed, {
-  jwks? | jwksUrl?, fetch? })` → `VerifyResult` through `resolverFromJwks`,
+workspaceId, { commit? })` → `{ signed, vcon }`, `verifyExport(signed, {
+jwks? | jwksUrl?, fetch? })` → `VerifyResult` through `resolverFromJwks`,
   and `importVcon(client, { vcon, workspaceId?, message? })`. Existing API
   untouched.
 - `@verifymymeeting/mcp` 0.3.0: tools `vmm_export_vcon` (`workspaceId`,
