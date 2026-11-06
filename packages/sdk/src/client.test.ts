@@ -121,7 +121,7 @@ describe('createClient', () => {
 
   it('exposes commit endpoints and verifies a fetched commit', async () => {
     const body = {
-      v: 1 as const,
+      v: 2 as const,
       workspace: 'c0000000-0000-4000-8000-000000000003',
       seq: 1,
       parent: null,

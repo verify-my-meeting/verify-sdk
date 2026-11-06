@@ -82,7 +82,10 @@ export type RecordSummary = {
   kind: RecordKind
   label: string
   url: string | null
+  /** Owner-supplied digest for `link` and `hash` records, hex. */
   hashHex: string | null
+  /** Algorithm of `hashHex`: `sha512` (default) or `sha256`. Null when absent. */
+  hashAlg: HashAlg | null
   contentBytes: number
   segmentationVersion: string | null
   leafCount: number
@@ -102,9 +105,23 @@ type DocumentShared = {
   provenance: Provenance
 }
 
+/** Algorithms accepted for owner-supplied digests. The protocol itself is SHA-512. */
+export type HashAlg = 'sha512' | 'sha256'
+
 export type DocumentInput =
-  | (DocumentShared & { kind: 'link'; url: string; hashHex?: string })
-  | (DocumentShared & { kind: 'hash'; label: string; hashHex: string })
+  | (DocumentShared & {
+      kind: 'link'
+      url: string
+      hashHex?: string
+      /** Defaults to `sha512`; `sha256` for a 32-byte digest. */
+      hashAlg?: HashAlg
+    })
+  | (DocumentShared & {
+      kind: 'hash'
+      label: string
+      hashHex: string
+      hashAlg?: HashAlg
+    })
   | (DocumentShared & { kind: 'text'; text: string })
 
 /** `POST /records`: one document as one commit, optional message. */
@@ -267,9 +284,9 @@ export type AttestationPayload =
     })
   | (AttestationPayloadBase & {
       kind: 'disclosure'
-      /** SHA-256 of the sealed public profile. */
+      /** SHA-512 of the canonical public profile fields. */
       public: string
-      /** SHA-256 of the sealed viewer profile. */
+      /** SHA-512 of the canonical viewer profile fields. */
       viewer: string
     })
 

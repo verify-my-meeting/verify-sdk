@@ -1,13 +1,13 @@
 /**
  * Ed25519 attestation signatures. The signed message is
- * `sha256(canonical payload)`; public keys are raw 32-byte values, hex
+ * `sha512(canonical payload)`; public keys are raw 32-byte values, hex
  * encoded on verification pages.
  */
-import { fromBase64, fromHex, sha256, utf8 } from './bytes'
+import { fromBase64, fromHex, sha512, utf8 } from './bytes'
 
 /** Hash of the canonical (RFC 8785) payload: the bytes that were signed. */
 export function payloadHash(canonical: string): Promise<Uint8Array> {
-  return sha256(utf8(canonical))
+  return sha512(utf8(canonical))
 }
 
 export async function verifySignature(

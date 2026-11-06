@@ -31,6 +31,11 @@ export type VmmMcpOptions = {
 const hex64 = z
   .string()
   .regex(/^[0-9a-f]{64}$/iu, 'Expected a SHA-256 hex digest')
+const hex128 = z
+  .string()
+  .regex(/^[0-9a-f]{128}$/iu, 'Expected a SHA-512 hex digest')
+/** Owner-supplied digest: SHA-512 (default) or SHA-256, declared by `hashAlg`. */
+const ownerDigest = z.union([hex128, hex64])
 
 const contentVisibility = z
   .enum(['public', 'link', 'viewer'])
@@ -74,9 +79,15 @@ const documentSchema = z.object({
   kind: z.enum(['link', 'hash', 'text']),
   label: z.string().max(200).optional(),
   url: z.string().url().optional().describe('Required for kind=link'),
-  hashHex: hex64
+  hashHex: ownerDigest
     .optional()
     .describe('Required for kind=hash; optional for kind=link'),
+  hashAlg: z
+    .enum(['sha512', 'sha256'])
+    .optional()
+    .describe(
+      'Algorithm of hashHex; sha512 (128 hex) by default, sha256 (64 hex)',
+    ),
   text: z
     .string()
     .optional()
@@ -103,6 +114,7 @@ function toDocumentInput(doc: z.infer<typeof documentSchema>) {
       kind: 'link' as const,
       url: doc.url,
       hashHex: doc.hashHex,
+      hashAlg: doc.hashAlg,
       ...shared,
     }
   }
@@ -111,6 +123,7 @@ function toDocumentInput(doc: z.infer<typeof documentSchema>) {
     return {
       kind: 'hash' as const,
       hashHex: doc.hashHex,
+      hashAlg: doc.hashAlg,
       ...shared,
       label: doc.label ?? 'Document',
     }
@@ -226,7 +239,7 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
     {
       title: 'Add a document to a workspace',
       description:
-        'Add one document (a recording link with optional SHA-256, a hash-only commitment, or transcript text segmented into Merkle leaves) as one commit on the workspace chain, with its provenance declaration. Pass documentId to replace an existing document. Returns the record with its Merkle root and the commit.',
+        'Add one document (a recording link with an optional digest, a hash-only commitment, or transcript text segmented into Merkle leaves) as one commit on the workspace chain, with its provenance declaration. Digests are SHA-512 by default; pass hashAlg sha256 for a SHA-256 digest. Pass documentId to replace an existing document. Returns the record with its Merkle root and the commit.',
       inputSchema: {
         workspaceId: z.string().uuid(),
         ...documentSchema.shape,

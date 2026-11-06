@@ -1,9 +1,9 @@
 {
-  "description": "Commit bodies, their RFC 8785 canonical form, and SHA-256 hashes. `unsortedInput` must normalize (tree sorted by doc, creators sorted, hashes lowercased) to the same hash as `commits[1]`.",
+  "description": "Commit bodies, their RFC 8785 canonical form, and SHA-512 hashes (body version 2, spec 2.0). `unsortedInput` must normalize (tree sorted by doc, creators sorted, hashes lowercased) to the same hash as `commits[1]`.",
   "commits": [
     {
       "body": {
-        "v": 1,
+        "v": 2,
         "workspace": "c0000000-0000-4000-8000-000000000003",
         "seq": 1,
         "parent": null,
@@ -19,7 +19,7 @@
             "doc": "a0000000-0000-4000-8000-000000000001",
             "kind": "text",
             "label": "Transcript",
-            "root": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+            "root": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
             "leafCount": 3,
             "segmentation": "v1",
             "provenance": {
@@ -33,15 +33,15 @@
           }
         ]
       },
-      "canonical": "{\"author\":{\"ref\":null,\"role\":\"owner\"},\"kind\":\"initial\",\"message\":\"\",\"parent\":null,\"seq\":1,\"time\":\"2026-11-06T10:00:00.000Z\",\"tree\":[{\"doc\":\"a0000000-0000-4000-8000-000000000001\",\"kind\":\"text\",\"label\":\"Transcript\",\"leafCount\":3,\"provenance\":{\"ai\":\"assisted\",\"aiRole\":\"verbatim\",\"created\":\"during\",\"creators\":[\"owner\"],\"note\":\"Otter export\",\"type\":\"transcript\"},\"root\":\"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"segmentation\":\"v1\"}],\"v\":1,\"workspace\":\"c0000000-0000-4000-8000-000000000003\"}",
-      "hashHex": "61eab0ddf978fb157964cb2092ad82f7dfeee208a6bb732de2c24c1cd25664fd"
+      "canonical": "{\"author\":{\"ref\":null,\"role\":\"owner\"},\"kind\":\"initial\",\"message\":\"\",\"parent\":null,\"seq\":1,\"time\":\"2026-11-06T10:00:00.000Z\",\"tree\":[{\"doc\":\"a0000000-0000-4000-8000-000000000001\",\"kind\":\"text\",\"label\":\"Transcript\",\"leafCount\":3,\"provenance\":{\"ai\":\"assisted\",\"aiRole\":\"verbatim\",\"created\":\"during\",\"creators\":[\"owner\"],\"note\":\"Otter export\",\"type\":\"transcript\"},\"root\":\"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"segmentation\":\"v1\"}],\"v\":2,\"workspace\":\"c0000000-0000-4000-8000-000000000003\"}",
+      "hashHex": "3736c10a71b550b8be633c0afb40fc2d5d719c96f210fc44d5c3b8b43cadfe4aebf0c401791bddd09441d7ef14d424ca9afc134cf5fac9f2430547ffd013a2a1"
     },
     {
       "body": {
-        "v": 1,
+        "v": 2,
         "workspace": "c0000000-0000-4000-8000-000000000003",
         "seq": 2,
-        "parent": "61eab0ddf978fb157964cb2092ad82f7dfeee208a6bb732de2c24c1cd25664fd",
+        "parent": "3736c10a71b550b8be633c0afb40fc2d5d719c96f210fc44d5c3b8b43cadfe4aebf0c401791bddd09441d7ef14d424ca9afc134cf5fac9f2430547ffd013a2a1",
         "kind": "add-document",
         "author": {
           "role": "integrator",
@@ -54,7 +54,7 @@
             "doc": "a0000000-0000-4000-8000-000000000001",
             "kind": "text",
             "label": "Transcript",
-            "root": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+            "root": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
             "leafCount": 3,
             "segmentation": "v1",
             "provenance": {
@@ -70,7 +70,7 @@
             "doc": "b0000000-0000-4000-8000-000000000002",
             "kind": "link",
             "label": "Recording",
-            "root": "abababababababababababababababababababababababababababababababab",
+            "root": "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab",
             "leafCount": 1,
             "segmentation": null,
             "provenance": {
@@ -82,15 +82,15 @@
           }
         ]
       },
-      "canonical": "{\"author\":{\"ref\":\"d0000000-0000-4000-8000-000000000004\",\"role\":\"integrator\"},\"kind\":\"add-document\",\"message\":\"Add the recording\",\"parent\":\"61eab0ddf978fb157964cb2092ad82f7dfeee208a6bb732de2c24c1cd25664fd\",\"seq\":2,\"time\":\"2026-11-06T11:00:00.000Z\",\"tree\":[{\"doc\":\"a0000000-0000-4000-8000-000000000001\",\"kind\":\"text\",\"label\":\"Transcript\",\"leafCount\":3,\"provenance\":{\"ai\":\"assisted\",\"aiRole\":\"verbatim\",\"created\":\"during\",\"creators\":[\"owner\"],\"note\":\"Otter export\",\"type\":\"transcript\"},\"root\":\"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"segmentation\":\"v1\"},{\"doc\":\"b0000000-0000-4000-8000-000000000002\",\"kind\":\"link\",\"label\":\"Recording\",\"leafCount\":1,\"provenance\":{\"ai\":\"none\",\"created\":\"during\",\"creators\":[\"owner\",\"participant\"],\"type\":\"recording\"},\"root\":\"abababababababababababababababababababababababababababababababab\",\"segmentation\":null}],\"v\":1,\"workspace\":\"c0000000-0000-4000-8000-000000000003\"}",
-      "hashHex": "684625d5d7a4078fb1d3f7006e21d3b4d9104d0bf4ec3f732814bdb7a1bd0106"
+      "canonical": "{\"author\":{\"ref\":\"d0000000-0000-4000-8000-000000000004\",\"role\":\"integrator\"},\"kind\":\"add-document\",\"message\":\"Add the recording\",\"parent\":\"3736c10a71b550b8be633c0afb40fc2d5d719c96f210fc44d5c3b8b43cadfe4aebf0c401791bddd09441d7ef14d424ca9afc134cf5fac9f2430547ffd013a2a1\",\"seq\":2,\"time\":\"2026-11-06T11:00:00.000Z\",\"tree\":[{\"doc\":\"a0000000-0000-4000-8000-000000000001\",\"kind\":\"text\",\"label\":\"Transcript\",\"leafCount\":3,\"provenance\":{\"ai\":\"assisted\",\"aiRole\":\"verbatim\",\"created\":\"during\",\"creators\":[\"owner\"],\"note\":\"Otter export\",\"type\":\"transcript\"},\"root\":\"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"segmentation\":\"v1\"},{\"doc\":\"b0000000-0000-4000-8000-000000000002\",\"kind\":\"link\",\"label\":\"Recording\",\"leafCount\":1,\"provenance\":{\"ai\":\"none\",\"created\":\"during\",\"creators\":[\"owner\",\"participant\"],\"type\":\"recording\"},\"root\":\"abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab\",\"segmentation\":null}],\"v\":2,\"workspace\":\"c0000000-0000-4000-8000-000000000003\"}",
+      "hashHex": "11ed34b1ea5d79520c587e94ffe781d4caaccaea92a6335eeaff04df31b619fc77a0ebd9066046f0ca7b030f58afa37004008da82b0c91864bd7d83114093e06"
     }
   ],
   "unsortedInput": {
-    "v": 1,
+    "v": 2,
     "workspace": "c0000000-0000-4000-8000-000000000003",
     "seq": 2,
-    "parent": "61EAB0DDF978FB157964CB2092AD82F7DFEEE208A6BB732DE2C24C1CD25664FD",
+    "parent": "3736C10A71B550B8BE633C0AFB40FC2D5D719C96F210FC44D5C3B8B43CADFE4AEBF0C401791BDDD09441D7EF14D424CA9AFC134CF5FAC9F2430547FFD013A2A1",
     "kind": "add-document",
     "author": {
       "role": "integrator",
@@ -103,7 +103,7 @@
         "doc": "b0000000-0000-4000-8000-000000000002",
         "kind": "link",
         "label": "Recording",
-        "root": "abababababababababababababababababababababababababababababababab",
+        "root": "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab",
         "leafCount": 1,
         "segmentation": null,
         "provenance": {
@@ -117,7 +117,7 @@
         "doc": "a0000000-0000-4000-8000-000000000001",
         "kind": "text",
         "label": "Transcript",
-        "root": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+        "root": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
         "leafCount": 3,
         "segmentation": "v1",
         "provenance": {
@@ -133,6 +133,6 @@
   },
   "brokenChain": {
     "description": "commits[1] with parent set to the zero hash; verifyChain must fail at seq 2 with reason parent",
-    "parent": "0000000000000000000000000000000000000000000000000000000000000000"
+    "parent": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
   }
 }

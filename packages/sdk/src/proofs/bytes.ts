@@ -51,6 +51,14 @@ export function toBase64Url(bytes: Uint8Array): string {
     .replace(/=+$/u, '')
 }
 
+/** SHA-512: the protocol hash (spec section 3). */
+export async function sha512(...parts: Array<Uint8Array>): Promise<Uint8Array> {
+  const data = concat(...parts)
+  const digest = await crypto.subtle.digest('SHA-512', data as BufferSource)
+  return new Uint8Array(digest)
+}
+
+/** SHA-256: not a protocol hash; kept for PKCE and owner-supplied digests. */
 export async function sha256(...parts: Array<Uint8Array>): Promise<Uint8Array> {
   const data = concat(...parts)
   const digest = await crypto.subtle.digest('SHA-256', data as BufferSource)

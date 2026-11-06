@@ -64,7 +64,7 @@ describe('merkle vectors', () => {
       expect(await verifyInclusion(toHex(hash), path, root)).toBe(true)
     }
     const receipt = {
-      v: 1 as const,
+      v: 2 as const,
       batch: 'b',
       root,
       index: 3,
@@ -144,7 +144,7 @@ describe('segmentation vectors', () => {
 })
 
 describe('signature', () => {
-  it('verifies an Ed25519 signature over sha256(canonical)', async () => {
+  it('verifies an Ed25519 signature over sha512(canonical)', async () => {
     const pair = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, [
       'sign',
       'verify',

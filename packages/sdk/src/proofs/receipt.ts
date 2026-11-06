@@ -6,7 +6,7 @@ import type { AuditStep } from './merkle'
 import { verifyInclusion } from './merkle'
 
 export type Receipt = {
-  v: 1
+  v: 2
   batch: string
   root: string
   index: number

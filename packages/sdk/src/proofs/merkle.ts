@@ -1,29 +1,29 @@
 /**
- * RFC 6962 (Certificate Transparency) Merkle trees over SHA-256.
+ * RFC 6962 (Certificate Transparency) Merkle trees over SHA-512.
  *
- * leaf hash:  SHA-256(0x00 || leaf)
- * node hash:  SHA-256(0x01 || left || right)
+ * leaf hash:  SHA-512(0x00 || leaf)
+ * node hash:  SHA-512(0x01 || left || right)
  * A tree with n > 1 leaves splits at k, the largest power of two less than
  * n. A single-leaf tree's root is its leaf hash. The empty tree's root is
- * SHA-256 of the empty string.
+ * SHA-512 of the empty string. (Protocol spec 2.0: SHA-512 throughout.)
  *
  * Mirrors `src/lib/proofs/merkle.ts` in the VerifyMyMeeting server. Web
  * Crypto digests are asynchronous, so every hashing function here returns a
  * Promise.
  */
-import { fromHex, sha256, toHex } from './bytes'
+import { fromHex, sha512, toHex } from './bytes'
 
 export type AuditStep = { hash: string; side: 'left' | 'right' }
 
 export function leafHash(leaf: Uint8Array): Promise<Uint8Array> {
-  return sha256(Uint8Array.of(0), leaf)
+  return sha512(Uint8Array.of(0), leaf)
 }
 
 export function nodeHash(
   left: Uint8Array,
   right: Uint8Array,
 ): Promise<Uint8Array> {
-  return sha256(Uint8Array.of(1), left, right)
+  return sha512(Uint8Array.of(1), left, right)
 }
 
 function largestPowerOfTwoBelow(n: number): number {
@@ -36,7 +36,7 @@ function largestPowerOfTwoBelow(n: number): number {
 export async function rootFromLeafHashes(
   hashes: Array<Uint8Array>,
 ): Promise<Uint8Array> {
-  if (hashes.length === 0) return sha256()
+  if (hashes.length === 0) return sha512()
   if (hashes.length === 1) return new Uint8Array(hashes[0] as Uint8Array)
   const k = largestPowerOfTwoBelow(hashes.length)
   return nodeHash(

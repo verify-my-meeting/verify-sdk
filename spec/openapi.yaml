@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: VerifyMyMeeting API
-  version: '1.1'
+  version: '2.0'
   description: |
     Meeting attestation infrastructure. Each workspace keeps one linear,
     append-only chain of commits; a commit names a tree of documents (each
@@ -218,7 +218,8 @@ paths:
       summary: Add or replace one document as one commit
       description: |
         Sugar for `POST /commits` with a single document. `link`: URL with
-        optional SHA-256. `hash`: SHA-256 only. `text`: UTF-8 plain text or
+        an optional digest. `hash`: digest only. Digests are SHA-512 (128
+        hex) unless `hashAlg` is `sha256` (64 hex). `text`: UTF-8 plain text or
         Markdown, segmented into Merkle leaves (segmentation v1). Link and
         hash records are single-leaf trees over the digest. `provenance` is
         required; `documentId` replaces an existing document with a new
@@ -296,7 +297,7 @@ paths:
     get:
       tags: [commits]
       summary: Read a commit with its hashed body
-      description: Recompute `SHA-256(canonical)` and compare with `hashHex` to verify (spec section 12).
+      description: Recompute `SHA-512(canonical)` and compare with `hashHex` to verify (spec section 12).
       security: [{}, { bearer: [] }]
       responses:
         '200':
@@ -1086,11 +1087,18 @@ components:
         kind: { type: string, enum: [link, hash, text] }
         label: { type: string }
         url: { type: [string, 'null'] }
-        hashHex: { type: [string, 'null'], description: SHA-256 hex }
+        hashHex:
+          { type: [string, 'null'], description: owner-supplied digest, hex }
+        hashAlg:
+          {
+            type: [string, 'null'],
+            enum: [sha512, sha256, null],
+            description: algorithm of hashHex,
+          }
         contentBytes: { type: integer }
         segmentationVersion: { type: [string, 'null'] }
         leafCount: { type: integer }
-        rootHex: { type: string, description: RFC 6962 SHA-256 root }
+        rootHex: { type: string, description: RFC 6962 SHA-512 root }
         version: { type: integer }
         provenance:
           oneOf:
@@ -1106,7 +1114,9 @@ components:
             kind: { const: link }
             url: { type: string, format: uri }
             label: { type: string, maxLength: 200 }
-            hashHex: { type: string, pattern: '^[0-9a-fA-F]{64}$' }
+            hashHex:
+              { type: string, pattern: '^([0-9a-fA-F]{128}|[0-9a-fA-F]{64})$' }
+            hashAlg: { type: string, enum: [sha512, sha256], default: sha512 }
             contentVisibility:
               { $ref: '#/components/schemas/ContentVisibility' }
             documentId: { type: string, format: uuid }
@@ -1116,7 +1126,9 @@ components:
           properties:
             kind: { const: hash }
             label: { type: string, minLength: 1, maxLength: 200 }
-            hashHex: { type: string, pattern: '^[0-9a-fA-F]{64}$' }
+            hashHex:
+              { type: string, pattern: '^([0-9a-fA-F]{128}|[0-9a-fA-F]{64})$' }
+            hashAlg: { type: string, enum: [sha512, sha256], default: sha512 }
             contentVisibility:
               { $ref: '#/components/schemas/ContentVisibility' }
             documentId: { type: string, format: uuid }
@@ -1287,7 +1299,7 @@ components:
         payloadHashHex:
           {
             type: [string, 'null'],
-            description: SHA-256 of the RFC 8785 canonical payload,
+            description: SHA-512 of the RFC 8785 canonical payload,
           }
         signatureB64:
           {
@@ -1343,12 +1355,12 @@ components:
         public:
           {
             type: string,
-            description: disclosure only; SHA-256 of the public profile,
+            description: disclosure only; SHA-512 of the public profile,
           }
         viewer:
           {
             type: string,
-            description: disclosure only; SHA-256 of the viewer profile,
+            description: disclosure only; SHA-512 of the viewer profile,
           }
     ProfileFields:
       type: object
@@ -1633,7 +1645,7 @@ components:
         serviceSignatureB64:
           {
             type: [string, 'null'],
-            description: 'Ed25519 over sha256("vmm-batch:<id>:<root>:<leafCount>")',
+            description: 'Ed25519 over sha512("vmm-batch:<id>:<root>:<leafCount>")',
           }
         serviceKeyId: { type: [string, 'null'] }
     BatchList:

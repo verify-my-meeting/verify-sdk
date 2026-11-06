@@ -25,7 +25,7 @@ export {
 } from './segmentation'
 export type { Segment } from './segmentation'
 export { payloadHash, verifySignature } from './signature'
-export { concat, fromBase64, sha256, toBase64Url, utf8 } from './bytes'
+export { concat, fromBase64, sha256, sha512, toBase64Url, utf8 } from './bytes'
 export {
   aiInvolvements,
   aiRoles,

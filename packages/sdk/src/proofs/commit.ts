@@ -2,10 +2,10 @@
  * Commit chain (spec section 12): one linear, append-only chain per
  * workspace. A commit names its parent, a tree of documents, an author, a
  * time, a message, and a kind, and is hashed as
- * `SHA-256(canonicalize(body))`. Mirrors `src/lib/proofs/commit.ts` in the
+ * `SHA-512(canonicalize(body))` (body version 2, spec 2.0). Mirrors `src/lib/proofs/commit.ts` in the
  * VerifyMyMeeting server; browser-safe.
  */
-import { sha256, toHex, utf8 } from './bytes'
+import { sha512, toHex, utf8 } from './bytes'
 import { canonicalize } from './canonicalize'
 import type { JsonValue } from './canonicalize'
 
@@ -73,7 +73,7 @@ export type CommitAuthor = {
 
 /** The hashed object. `tree` is sorted by `doc` before hashing. */
 export type CommitBody = {
-  v: 1
+  v: 2
   workspace: string
   seq: number
   parent: string | null
@@ -113,7 +113,7 @@ export function normalizeTree(tree: Array<TreeEntry>): Array<TreeEntry> {
 
 export function normalizeCommit(body: CommitBody): CommitBody {
   return {
-    v: 1,
+    v: 2,
     workspace: body.workspace,
     seq: body.seq,
     parent: body.parent ? body.parent.toLowerCase() : null,
@@ -130,7 +130,7 @@ export function commitCanonical(body: CommitBody): string {
 }
 
 export async function commitHashHex(body: CommitBody): Promise<string> {
-  return toHex(await sha256(utf8(commitCanonical(body))))
+  return toHex(await sha512(utf8(commitCanonical(body))))
 }
 
 /** True when `hashHex` is the hash of `body`. */
