@@ -150,4 +150,138 @@ describe('createClient', () => {
     expect(calls[0]!.url.pathname).toBe(`/api/v1/commits/${hashHex}`)
     expect(calls[1]!.url.search).toBe('?key=lnk_x')
   })
+
+  it('exports vCons in the three forms with the matching Accept header', async () => {
+    const signed = {
+      payload: 'eyJ2Y29uIjoiMC41LjAifQ',
+      signatures: [{ protected: 'eyJhbGciOiJFZERTQSJ9', signature: 'c2ln' }],
+    }
+    const gzipBytes = new Uint8Array([0x1f, 0x8b, 8, 0, 1, 2, 3])
+    const { calls, fetchLike } = fakeFetch(({ init }) => {
+      const accept = (init.headers as Record<string, string>).accept
+      if (accept === 'application/gzip') {
+        return new Response(gzipBytes, {
+          headers: { 'content-type': 'application/gzip' },
+        })
+      }
+      if (accept === 'application/vcon+json') {
+        return new Response('{"vcon":"0.5.0","uuid":"u"}', {
+          headers: { 'content-type': 'application/vcon+json' },
+        })
+      }
+      return new Response(JSON.stringify(signed), {
+        headers: { 'content-type': 'application/jose+json' },
+      })
+    })
+    const client = createClient({
+      baseUrl: 'https://vmm.example',
+      token: 'vmm_ct_test',
+      fetch: fetchLike,
+    })
+    const head = await client.vcon.export('w1')
+    expect(head).toEqual(signed)
+    expect(calls[0]!.url.pathname).toBe('/api/v1/workspaces/w1/vcon')
+    expect(calls[0]!.url.search).toBe('')
+    expect((calls[0]!.init.headers as Record<string, string>).accept).toBe(
+      'application/jose+json',
+    )
+    expect(calls[0]!.init.body).toBeUndefined()
+
+    const unsigned = await client.vcon.export('w1', {
+      commit: 3,
+      form: 'unsigned',
+    })
+    expect(unsigned.uuid).toBe('u')
+    expect(calls[1]!.url.search).toBe('?commit=3&form=unsigned')
+    expect((calls[1]!.init.headers as Record<string, string>).accept).toBe(
+      'application/vcon+json',
+    )
+
+    const gz = await client.vcon.exportVerification('my-meeting', {
+      form: 'gzip',
+    })
+    expect(gz).toBeInstanceOf(Uint8Array)
+    expect(Array.from(gz)).toEqual(Array.from(gzipBytes))
+    expect(calls[2]!.url.pathname).toBe('/api/v1/verify/my-meeting/vcon')
+    expect(calls[2]!.url.search).toBe('?form=gzip')
+    expect((calls[2]!.init.headers as Record<string, string>).accept).toBe(
+      'application/gzip',
+    )
+    expect(
+      (calls[2]!.init.headers as Record<string, string>).authorization,
+    ).toBe('Bearer vmm_ct_test')
+  })
+
+  it('imports a vCon as JSON and an email thread as a raw body', async () => {
+    const result = {
+      workspace: { id: 'w2', title: 'Thread' },
+      commit: { id: 'c1', seq: 1 },
+      imported: { parties: 2, documents: 3, signature: 'none' },
+    }
+    const { calls, fetchLike } = fakeFetch(
+      () => new Response(JSON.stringify(result)),
+    )
+    const client = createClient({
+      baseUrl: 'https://vmm.example',
+      token: 'vmm_sk_test',
+      fetch: fetchLike,
+    })
+    const imported = await client.vcon.import({
+      vcon: { vcon: '0.5.0', uuid: 'u', subject: 'Thread' },
+      message: 'From a partner',
+    })
+    expect(imported.imported.signature).toBe('none')
+    expect(calls[0]!.url.pathname).toBe('/api/v1/vcon/import')
+    expect(calls[0]!.init.method).toBe('POST')
+    expect(
+      (calls[0]!.init.headers as Record<string, string>)['content-type'],
+    ).toBe('application/json')
+    expect(JSON.parse(String(calls[0]!.init.body))).toEqual({
+      vcon: { vcon: '0.5.0', uuid: 'u', subject: 'Thread' },
+      message: 'From a partner',
+    })
+
+    await client.vcon.import({
+      email: 'From: a@example.com\r\nSubject: Hi\r\n\r\nHello',
+      workspaceId: 'w2',
+    })
+    expect(calls[1]!.url.search).toBe('?workspaceId=w2')
+    expect(
+      (calls[1]!.init.headers as Record<string, string>)['content-type'],
+    ).toBe('message/rfc822')
+    expect(String(calls[1]!.init.body)).toContain('Subject: Hi')
+
+    const mbox = new TextEncoder().encode('From a@example.com Thu Nov  6\n')
+    await client.vcon.import({ email: mbox, mbox: true, message: 'm' })
+    expect(calls[2]!.url.search).toBe('?message=m')
+    expect(
+      (calls[2]!.init.headers as Record<string, string>)['content-type'],
+    ).toBe('application/mbox')
+    expect(calls[2]!.init.body).toBe(mbox)
+  })
+
+  it('fetches the JWK Set from the well-known path', async () => {
+    const jwks = {
+      keys: [
+        {
+          kty: 'OKP',
+          crv: 'Ed25519',
+          x: 'AAAA',
+          kid: 'vmm-1',
+          use: 'sig',
+          alg: 'EdDSA',
+        },
+      ],
+    }
+    const { calls, fetchLike } = fakeFetch(
+      () => new Response(JSON.stringify(jwks)),
+    )
+    const client = createClient({
+      baseUrl: 'https://vmm.example/',
+      fetch: fetchLike,
+    })
+    expect(await client.vcon.jwks()).toEqual(jwks)
+    expect(calls[0]!.url.href).toBe('https://vmm.example/.well-known/jwks.json')
+    expect(calls[0]!.init.headers).not.toHaveProperty('authorization')
+  })
 })

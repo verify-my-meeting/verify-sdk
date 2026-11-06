@@ -1,7 +1,7 @@
 {
   "name": "@verifymymeeting/mcp",
   "version": "0.3.0",
-  "description": "MCP server for VerifyMyMeeting workspaces, records, invitations, and verification",
+  "description": "MCP server for VerifyMyMeeting workspaces, records, invitations, verification, and vCon export and import",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -35,6 +35,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@verifymymeeting/sdk": "workspace:*",
+    "@verifymymeeting/vcon": "workspace:*",
     "zod": "^4.6.7"
   },
   "engines": {

@@ -22,6 +22,7 @@ import type {
   Invitation,
   InvitationInput,
   InvitationPreview,
+  Jwks,
   ListResponse,
   Me,
   Participant,
@@ -34,6 +35,10 @@ import type {
   VerificationPage,
   VisibilityResult,
   Visibility,
+  VconExportResult,
+  VconForm,
+  VconImportInput,
+  VconImportResult,
   Workspace,
   WorkspaceAggregate,
   WorkspaceDetail,
@@ -75,24 +80,37 @@ export function createClient(options: ClientOptions) {
     resetSeconds: null,
   }
 
-  async function request<T>(
+  type SendInit = {
+    /** Form-encode an object body (the token exchange). */
+    form?: boolean
+    query?: Record<string, string | undefined>
+    /** Overrides the default `application/json`. */
+    accept?: string
+    /** Send `body` as is (a string or bytes) under this media type. */
+    contentType?: string
+  }
+
+  async function send(
     method: string,
     path: string,
     body?: unknown,
-    init: { form?: boolean; query?: Record<string, string | undefined> } = {},
-  ): Promise<T> {
+    init: SendInit = {},
+  ): Promise<Response> {
     const url = new URL(path, base)
     for (const [key, value] of Object.entries(init.query ?? {})) {
       if (value !== undefined) url.searchParams.set(key, value)
     }
     const headers: Record<string, string> = {
-      accept: 'application/json',
+      accept: init.accept ?? 'application/json',
       ...options.headers,
     }
     if (options.token) headers.authorization = `Bearer ${options.token}`
-    let payload: string | undefined
+    let payload: BodyInit | undefined
     if (body !== undefined) {
-      if (init.form) {
+      if (init.contentType) {
+        headers['content-type'] = init.contentType
+        payload = body as BodyInit
+      } else if (init.form) {
         headers['content-type'] = 'application/x-www-form-urlencoded'
         payload = new URLSearchParams(body as Record<string, string>).toString()
       } else {
@@ -107,6 +125,16 @@ export function createClient(options: ClientOptions) {
       resetSeconds: numberHeader(response, 'ratelimit-reset'),
     }
     if (!response.ok) throw await VmmApiError.fromResponse(response)
+    return response
+  }
+
+  async function request<T>(
+    method: string,
+    path: string,
+    body?: unknown,
+    init: SendInit = {},
+  ): Promise<T> {
+    const response = await send(method, path, body, init)
     return (await response.json()) as T
   }
 
@@ -281,6 +309,70 @@ export function createClient(options: ClientOptions) {
       ),
   }
 
+  async function exportVcon<F extends VconForm>(
+    path: string,
+    options: { commit?: string | number; form?: F },
+  ): Promise<VconExportResult<F>> {
+    const form: VconForm = options.form ?? 'signed'
+    const response = await send('GET', path, undefined, {
+      accept: vconAccept[form],
+      query: {
+        commit:
+          options.commit === undefined ? undefined : String(options.commit),
+        form: options.form,
+      },
+    })
+    if (form === 'gzip') {
+      return new Uint8Array(await response.arrayBuffer()) as VconExportResult<F>
+    }
+    return (await response.json()) as VconExportResult<F>
+  }
+
+  const vcon = {
+    /**
+     * The workspace as an IETF vCon at owner level: signed (a JWS General
+     * JSON Serialization, the default), unsigned, or gzip of the signed
+     * JSON as bytes. `commit` selects a version by sequence number or hash;
+     * the head is the default. Verify and read the signed form with
+     * `@verifymymeeting/vcon` (`verifyVcon`, `unsignedFrom`).
+     */
+    export: <F extends VconForm = 'signed'>(
+      workspaceId: string,
+      options: { commit?: string | number; form?: F } = {},
+    ) => exportVcon<F>(`/api/v1/workspaces/${workspaceId}/vcon`, options),
+    /**
+     * The vCon a verification key (public slug or link token) shows,
+     * rendered at that key's level as a `redacted_from` of the owner-level
+     * document. No credentials needed beyond the key.
+     */
+    exportVerification: <F extends VconForm = 'signed'>(
+      key: string,
+      options: { form?: F } = {},
+    ) => exportVcon<F>(`/api/v1/verify/${key}/vcon`, options),
+    /**
+     * Import a vCon (signed or unsigned) or an email thread (`.eml`, or
+     * mbox with `mbox: true`). Without `workspaceId` a new workspace is
+     * created from the document; with it, the documents are committed onto
+     * that workspace. Unknown `critical` extension tokens are rejected with
+     * `unsupported_extension`.
+     */
+    import: (input: VconImportInput) => {
+      if ('email' in input) {
+        return send('POST', '/api/v1/vcon/import', input.email, {
+          contentType: input.mbox ? 'application/mbox' : 'message/rfc822',
+          query: { workspaceId: input.workspaceId, message: input.message },
+        }).then((response) => response.json() as Promise<VconImportResult>)
+      }
+      return request<VconImportResult>('POST', '/api/v1/vcon/import', {
+        vcon: input.vcon,
+        workspaceId: input.workspaceId,
+        message: input.message,
+      })
+    },
+    /** The service public keys that sign exports (`/.well-known/jwks.json`). */
+    jwks: () => request<Jwks>('GET', '/.well-known/jwks.json'),
+  }
+
   return {
     workspaces,
     records,
@@ -290,6 +382,7 @@ export function createClient(options: ClientOptions) {
     attestations,
     batches,
     oauth,
+    vcon,
     /** Verification page by public slug, link token, or workspace id. */
     verify: (key: string) =>
       request<VerificationPage>('GET', `/api/v1/verify/${key}`),
@@ -305,6 +398,12 @@ export function createClient(options: ClientOptions) {
       return lastRateLimit
     },
   }
+}
+
+const vconAccept: Record<VconForm, string> = {
+  signed: 'application/jose+json',
+  unsigned: 'application/vcon+json',
+  gzip: 'application/gzip',
 }
 
 function numberHeader(response: Response, name: string): number | null {

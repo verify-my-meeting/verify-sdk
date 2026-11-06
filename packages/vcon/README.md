@@ -118,6 +118,37 @@ travel as attachments found with `attestations(vcon)`, `provenances(vcon)`,
 `commitments(vcon)`, `receipts(vcon)`, `consents(vcon)` and
 `identities(vcon)`.
 
+## Through the API
+
+With an SDK client (`createClient` from `@verifymymeeting/sdk`), three
+helpers wrap the vCon endpoints and keep the document typed:
+
+```ts
+import { createClient } from '@verifymymeeting/sdk'
+import { exportVcon, importVcon, verifyExport } from '@verifymymeeting/vcon'
+
+const client = createClient({ baseUrl: 'https://verifymymeeting.com', token })
+
+// GET /api/v1/workspaces/:id/vcon, signed; `vcon` is the decoded payload.
+const { signed, vcon } = await exportVcon(client, workspaceId, { commit: 3 })
+
+// Verify against the service JWK Set (fetched, or pass `jwks`).
+const result = await verifyExport(signed, {
+  jwksUrl: 'https://verifymymeeting.com/.well-known/jwks.json',
+})
+if (!result.ok) throw new Error(result.reason)
+
+// POST /api/v1/vcon/import: a Vcon or SignedVcon, new workspace or commit.
+const { workspace, commit, imported } = await importVcon(client, {
+  vcon,
+  workspaceId,
+})
+```
+
+`client.vcon.export(id, { form: 'unsigned' | 'gzip' })`,
+`client.vcon.exportVerification(key)` (viewer level, by public slug or link
+token) and `client.vcon.jwks()` are on the SDK client itself.
+
 ## Development
 
 ```sh

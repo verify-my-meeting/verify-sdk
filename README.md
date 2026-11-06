@@ -74,6 +74,27 @@ const ok = await verifySignature(
 )
 ```
 
+### vCon export and import
+
+Every commit is also an IETF vCon (`draft-ietf-vcon-vcon-core-05`), signed
+by the service key. `client.vcon` fetches it in the three forms and imports
+documents; `@verifymymeeting/vcon` types, verifies and maps it.
+
+```ts
+const signed = await vmm.vcon.export(workspace.id) // JWS General JSON (head)
+const unsigned = await vmm.vcon.export(workspace.id, {
+  commit: 3,
+  form: 'unsigned',
+})
+const bytes = await vmm.vcon.exportVerification('my-meeting', { form: 'gzip' })
+const jwks = await vmm.vcon.jwks() // /.well-known/jwks.json
+
+const imported = await vmm.vcon.import({ vcon: unsigned, message: 'From VMR' })
+await vmm.vcon.import({ email: emlText, workspaceId: workspace.id })
+await vmm.vcon.import({ email: mboxBytes, mbox: true })
+// { workspace, commit, imported: { parties, documents, signature } }
+```
+
 ### Integrator consent (OAuth 2.1 with PKCE)
 
 ```ts
@@ -129,15 +150,19 @@ Claude Desktop, Claude Code, or Codex configuration:
 ```
 
 Tools: `vmm_list_workspaces`, `vmm_create_workspace`, `vmm_get_workspace`,
-`vmm_attach_record`, `vmm_create_invitation`, `vmm_get_verification`,
-`vmm_get_receipt`. Embed the server in your own process with
-`createVmmMcpServer({ baseUrl, token })` and any MCP transport.
+`vmm_attach_record`, `vmm_commit_records`, `vmm_get_history`,
+`vmm_create_invitation`, `vmm_get_verification`, `vmm_get_receipt`,
+`vmm_export_vcon` (unsigned document, `verify: true` checks the service
+signature against `/.well-known/jwks.json`, `raw: true` adds the JWS) and
+`vmm_import_vcon` (a vCon object or email text). Embed the server in your
+own process with `createVmmMcpServer({ baseUrl, token })` and any MCP
+transport.
 
 ## Development
 
 ```sh
 pnpm install
-pnpm typecheck   # builds the sdk first so mcp can resolve it
+pnpm typecheck   # builds sdk and vcon first so mcp can resolve them
 pnpm test
 pnpm build
 pnpm check       # prettier

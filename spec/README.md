@@ -98,7 +98,7 @@ Every payload carries:
 
 ```json
 {
-  "v": 2,
+  "v": 1,
   "workspace": "<workspace uuid>",
   "handle": "Person #4821",
   "issuedAt": "<ISO 8601 UTC>",
@@ -119,6 +119,11 @@ witness }` where `leaves` is `"all"`, `"none"` (explicit exclusion), or an
 - `disclosure`: `public` and `viewer`, each the SHA-512 (hex) of the
   canonicalized profile fields for that level. The fields themselves are
   not in the payload.
+
+Attestation payloads stay at version 1: protocol 2.0 moved only commit
+bodies (section 12) and receipts (section 9) to `"v": 2`, since those are
+where the hash algorithm appears. A payload's hashes (`root`, `commit`,
+`public`, `viewer`) are SHA-512 since 2.0 and are told apart by length.
 
 The humanity score is the value Cubid served at signing time. Later score
 changes never alter a stored attestation.
@@ -197,8 +202,45 @@ server-side; handles are unlinkable across workspaces by construction.
 See `openapi.yaml`. The MCP server (`@verifymymeeting/mcp`) exposes
 `vmm_list_workspaces`, `vmm_create_workspace`, `vmm_get_workspace`,
 `vmm_attach_record`, `vmm_commit_records`, `vmm_get_history`,
-`vmm_create_invitation`, `vmm_get_verification`, and `vmm_get_receipt`, each
-a thin wrapper over the corresponding endpoint.
+`vmm_create_invitation`, `vmm_get_verification`, `vmm_get_receipt`,
+`vmm_export_vcon`, and `vmm_import_vcon`, each a thin wrapper over the
+corresponding endpoint.
+
+The vCon endpoints (sections 14 and 15):
+
+- `GET /api/v1/workspaces/:id/vcon`: the owner-level document of one commit
+  (`?commit=` sequence number or hash, head by default). Owner session,
+  integrator API key, or consent token with `workspaces:read`.
+- `GET /api/v1/verify/:key/vcon`: the document at the key's viewer level
+  (public slug or link token, resolved as `GET /api/v1/verify/:key`), a
+  `redacted_from` of the owner-level document. No credentials beyond the
+  key.
+- Both take `Accept` or `?form=`: `application/jose+json` (`signed`, the
+  default: JWS General JSON Serialization by the service key),
+  `application/vcon+json` (`unsigned`), `application/gzip` (`gzip`: the
+  signed JSON compressed), and answer with `Content-Disposition:
+attachment; filename="<workspace-slug>-<seq>.vcon.jws"` (`.vcon.json`,
+  `.vcon.jws.gz`).
+- `POST /api/v1/vcon/import`: a JSON body `{ vcon, workspaceId?, message? }`
+  (unsigned object or signed JWS), or a raw body under `application/vcon+json`,
+  `application/jose+json`, `message/rfc822` (one `.eml`) or
+  `application/mbox` (a thread) with `?workspaceId=&message=`. Session, API
+  key, or consent token with `workspaces:write`. Without `workspaceId` a
+  workspace is created from the document; otherwise its documents are
+  committed onto the workspace. Returns `{ workspace, commit, imported: {
+parties, documents, signature: verified | unverified | none } }`. An
+  unknown `critical` token is a 400 with code `unsupported_extension`.
+- `GET /.well-known/jwks.json`: the service keys as a JWK Set, `{ keys: [{
+kty: "OKP", crv: "Ed25519", x, kid, use: "sig", alg: "EdDSA" }] }`, the
+  current key and any retired keys.
+
+In the SDK these are `client.vcon.export(workspaceId, { commit?, form? })`,
+`client.vcon.exportVerification(key, { form? })`, `client.vcon.import(input)`
+and `client.vcon.jwks()`; `@verifymymeeting/vcon` adds `exportVcon`,
+`verifyExport` and `importVcon` over the typed document. The MCP tool
+`vmm_export_vcon` returns the unsigned document and, with `verify: true`,
+checks the signature against the JWK Set; `vmm_import_vcon` takes a vCon
+object or email text.
 
 ## 12. Commits
 
@@ -441,9 +483,10 @@ disclosed anything at the level.
 
 ### 15.5 Levels and redaction
 
-The owner-level document is rendered and stored at commit time. Lower
-levels (`viewer`, `link`, `public`) are derived from it by omission and
-carry `redacted_from: { uuid: <owner-level uuid>, type, url?, content_hash?
+The owner-level document is rendered and stored at commit time and served
+by `GET /api/v1/workspaces/:id/vcon` (section 11). Lower levels (`viewer`,
+`link`, `public`) are served by `GET /api/v1/verify/:key/vcon` at the key's
+level, derived from the owner-level document by omission, and carry `redacted_from: { uuid: <owner-level uuid>, type, url?, content_hash?
 }` instead of `amended_from`; `type` is `UNSPECIFIED` for `viewer` and
 `CONTACT_INFO` below it. `redactVcon(owner, level)` and
 `toVcon(input, { level })` agree byte for byte:
@@ -466,11 +509,20 @@ no unprotected header. Keys are published at `/.well-known/jwks.json` as
 draft requires `x5c` or `x5u`; neither is emitted until an interoperability
 partner needs a certificate chain, which can be added to the unprotected
 header without changing a signature. The unsigned form is available for
-reading and diffing. No JWE.
+reading and diffing, and the gzip form for large exports; the export
+endpoints choose by `Accept` or `?form=` (section 11). `verifyExport` in
+`@verifymymeeting/vcon` resolves the `kid` against the JWK Set and
+verifies offline. No JWE.
 
 ### 15.7 Import
 
-`fromVcon` rejects unknown `critical` tokens and returns a plan:
+`POST /api/v1/vcon/import` (section 11) accepts a vCon, signed or
+unsigned, or an email thread (`.eml` or mbox, converted by the email
+adapter into a vCon with `parties` from the headers and one text `dialog`
+entry per message), and creates a workspace or, with `workspaceId`, a
+commit on an existing one. The server and `fromVcon` apply the same rules:
+unknown `critical` tokens are rejected (`unsupported_extension`) and the
+document becomes a plan:
 
 - `subject` → workspace title; `parties` → participant slots with the
   disclosed `name`, `org`, `mailto` and `tel`; a party with `validation:

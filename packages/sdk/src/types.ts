@@ -36,6 +36,7 @@ export type ErrorCode =
   | 'feature_disabled'
   | 'invalid_state'
   | 'database_unavailable'
+  | 'unsupported_extension'
   | 'internal'
 
 export type ApiErrorBody = {
@@ -290,11 +291,27 @@ export type AttestationPayload =
       viewer: string
     })
 
+/**
+ * What a participant disclosed at a level. `displayName` and
+ * `affiliation` are self-declared; `identifiers` are Cubid-verified
+ * identifiers (email, phone, name, social accounts) the participant chose
+ * to disclose, synced from Cubid at disclosure time. Nothing else is ever
+ * disclosed.
+ */
 export type ProfileFields = {
   displayName?: string
   affiliation?: string
-  contact?: string
-  linkIdentity?: boolean
+  identifiers?: Array<DisclosedIdentifier>
+}
+
+export type DisclosedIdentifier = {
+  /** `email`, `phone`, `name`, or a social account kind (`github`, ...). */
+  kind: string
+  value: string
+  status: 'verified'
+  verifiedBy: 'cubid'
+  /** When the identifier was last read from Cubid. */
+  syncedAt: string
 }
 
 export type WorkspaceDetail = {
@@ -514,6 +531,77 @@ export type TokenResponse = {
 }
 
 export type ListResponse<T> = { items: Array<T> }
+
+/**
+ * An unsigned IETF vCon (draft-ietf-vcon-vcon-core-05) as the API serves
+ * it. The SDK carries no vCon types of its own: `@verifymymeeting/vcon`
+ * depends on this package and types, validates and verifies the document.
+ */
+export type VconDocument = Record<string, unknown>
+
+/** A signed vCon: JWS General JSON Serialization (RFC 7515 section 7.2.1). */
+export type SignedVconDocument = {
+  payload: string
+  signatures: Array<{
+    protected: string
+    header?: Record<string, unknown>
+    signature: string
+  }>
+}
+
+/**
+ * Forms of a vCon export, each with its media type: `signed`
+ * (`application/jose+json`, the default), `unsigned`
+ * (`application/vcon+json`), and `gzip` (`application/gzip` of the signed
+ * JSON).
+ */
+export type VconForm = 'signed' | 'unsigned' | 'gzip'
+
+export type VconExportResult<F extends VconForm> = F extends 'gzip'
+  ? Uint8Array
+  : F extends 'unsigned'
+    ? VconDocument
+    : SignedVconDocument
+
+/** `POST /vcon/import`: a vCon (signed or unsigned) or an email thread. */
+export type VconImportInput =
+  | {
+      vcon: VconDocument | SignedVconDocument
+      /** Commit onto this workspace instead of creating one. */
+      workspaceId?: string
+      message?: string
+    }
+  | {
+      /** One RFC 5322 message (`.eml`) or, with `mbox`, a thread (mbox). */
+      email: string | Uint8Array
+      mbox?: boolean
+      workspaceId?: string
+      message?: string
+    }
+
+export type VconImportResult = {
+  workspace: Workspace
+  commit: CommitSummary
+  imported: {
+    parties: number
+    documents: number
+    /** `verified` when the document was a JWS signed by a known key. */
+    signature: 'verified' | 'unverified' | 'none'
+  }
+}
+
+/** One service public key as served in the JWK Set. */
+export type Jwk = {
+  kty: 'OKP'
+  crv: 'Ed25519'
+  x: string
+  kid: string
+  use: 'sig'
+  alg: 'EdDSA'
+}
+
+/** `GET /.well-known/jwks.json`: the current service key and retired keys. */
+export type Jwks = { keys: Array<Jwk> }
 
 export type AnchorItemKind = 'attestation' | 'commit'
 

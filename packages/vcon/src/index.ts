@@ -71,6 +71,13 @@ export type {
   SignOptions,
   VerifyResult,
 } from './jws'
+export { exportVcon, importVcon, verifyExport } from './client'
+export type {
+  ExportedVcon,
+  ExportVconOptions,
+  ImportVconInput,
+  VerifyExportOptions,
+} from './client'
 export {
   attestations,
   commitments,

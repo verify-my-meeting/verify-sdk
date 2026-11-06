@@ -19,6 +19,13 @@ info:
     withdrawal are available only to a signed-in participant in the
     VerifyMyMeeting web application and are therefore not in this document.
 
+    vCon: every workspace commit is also an IETF vCon
+    (`draft-ietf-vcon-vcon-core-05`, syntax `0.5.0`, spec sections 14 and
+    15), exported signed by the service key as a JWS General JSON
+    Serialization, unsigned, or gzipped, and imported from a vCon or an
+    email thread. The signing keys are a JWK Set at
+    `/.well-known/jwks.json`.
+
     Errors use one shape: `{ "error": { "code", "message", "details?" } }`.
     Every response carries `x-request-id`, `ratelimit-limit`,
     `ratelimit-remaining`, and `ratelimit-reset` headers.
@@ -38,6 +45,7 @@ tags:
   - name: anchoring
   - name: account
   - name: oauth
+  - name: vcon
 
 paths:
   /api/v1/workspaces:
@@ -194,6 +202,44 @@ paths:
                 type: object
                 required: [linkToken]
                 properties: { linkToken: { type: string } }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}/vcon:
+    parameters:
+      - { $ref: '#/components/parameters/WorkspaceId' }
+      - { $ref: '#/components/parameters/VconCommit' }
+      - { $ref: '#/components/parameters/VconForm' }
+    get:
+      tags: [vcon]
+      summary: Export a workspace as a vCon (owner level)
+      description: |
+        The owner-level vCon of one commit (the head by default) as rendered
+        and stored at commit time (spec section 15). Requires the owner
+        session, an integrator API key, or a consent token with
+        `workspaces:read`.
+
+        The form is chosen by `Accept` or by the `form` query parameter:
+        `application/jose+json` (`signed`, the default) is the JWS General
+        JSON Serialization signed by the service key; `application/vcon+json`
+        (`unsigned`) is the payload alone; `application/gzip` (`gzip`) is the
+        signed JSON compressed. The response carries
+        `Content-Disposition: attachment; filename="<workspace-slug>-<seq>.vcon.jws"`
+        (`.vcon.json` unsigned, `.vcon.jws.gz` gzip).
+      security: [{ bearer: [] }]
+      responses:
+        '200':
+          description: The vCon in the requested form
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              description: '`attachment; filename="<workspace-slug>-<seq>.vcon.jws"`, `.vcon.json`, or `.vcon.jws.gz`'
+          content:
+            application/jose+json:
+              schema: { $ref: '#/components/schemas/SignedVcon' }
+            application/vcon+json:
+              schema: { $ref: '#/components/schemas/Vcon' }
+            application/gzip:
+              schema: { type: string, format: binary }
         default: { $ref: '#/components/responses/Error' }
 
   /api/v1/workspaces/{id}/records:
@@ -474,6 +520,40 @@ paths:
               schema: { $ref: '#/components/schemas/VerificationPage' }
         default: { $ref: '#/components/responses/Error' }
 
+  /api/v1/verify/{key}/vcon:
+    parameters:
+      - name: key
+        in: path
+        required: true
+        description: Public slug or link token (`lnk_...`), resolved as for `/api/v1/verify/{key}`
+        schema: { type: string }
+      - { $ref: '#/components/parameters/VconForm' }
+    get:
+      tags: [vcon]
+      summary: Export a verification page as a vCon (viewer level)
+      description: |
+        The head commit's vCon rendered at the key's access level: a
+        `redacted_from` of the owner-level document (spec section 15.5),
+        where parties collapse to `anonymous` or the disclosed fields and
+        undisclosed documents become hash-only entries. No credentials
+        beyond the key. Same `form` / `Accept` selection and
+        `Content-Disposition` as the owner-level export.
+      security: [{}]
+      responses:
+        '200':
+          description: The vCon in the requested form
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            application/jose+json:
+              schema: { $ref: '#/components/schemas/SignedVcon' }
+            application/vcon+json:
+              schema: { $ref: '#/components/schemas/Vcon' }
+            application/gzip:
+              schema: { type: string, format: binary }
+        default: { $ref: '#/components/responses/Error' }
+
   /api/v1/receipts/{kind}/{id}:
     parameters:
       - name: kind
@@ -685,6 +765,83 @@ paths:
               schema: { $ref: '#/components/schemas/TokenResponse' }
         default: { $ref: '#/components/responses/Error' }
 
+  /api/v1/vcon/import:
+    post:
+      tags: [vcon]
+      summary: Import a vCon or an email thread
+      description: |
+        Create a workspace from a vCon, or commit a vCon's documents onto an
+        existing workspace (spec section 15.7). Requires a session, an
+        integrator API key, or a consent token with `workspaces:write`.
+
+        Either a JSON body `{ vcon, workspaceId?, message? }` where `vcon`
+        is the unsigned vCon object or a signed JWS General JSON
+        Serialization, or a raw body under `Content-Type`
+        `application/vcon+json` (unsigned), `application/jose+json`
+        (signed), `message/rfc822` (one `.eml`) or `application/mbox` (a
+        thread), with `workspaceId` and `message` as query parameters. Email
+        is converted by the email adapter: `parties` from the headers, one
+        text `dialog` entry per message.
+
+        Without `workspaceId` a new workspace is created (title from
+        `subject`). Parties become participant slots, `dialog` and
+        `analysis` entries become documents with provenance derived from
+        `type`, `vendor` and `product`, attachments become `evidence` or
+        `other` documents, `url` + `content_hash` entries become `link`
+        documents with the digest carried over; `sessions` and `events` are
+        preserved, not interpreted. A `critical` extension token the server
+        does not know is refused with `unsupported_extension` (400). A
+        signed input is checked against the service keys and reported in
+        `imported.signature`.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: workspaceId
+          in: query
+          description: For raw bodies; commit onto this workspace instead of creating one
+          schema: { type: string, format: uuid }
+        - name: message
+          in: query
+          description: For raw bodies; the commit message
+          schema: { type: string, maxLength: 500 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VconImportInput' }
+          application/vcon+json:
+            schema: { $ref: '#/components/schemas/Vcon' }
+          application/jose+json:
+            schema: { $ref: '#/components/schemas/SignedVcon' }
+          message/rfc822:
+            schema: { type: string, description: One RFC 5322 message }
+          application/mbox:
+            schema: { type: string, description: An mbox file with the thread }
+      responses:
+        '200':
+          description: The workspace, the commit, and what was imported
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VconImportResult' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /.well-known/jwks.json:
+    get:
+      tags: [vcon]
+      summary: Service public keys
+      description: |
+        The JWK Set (RFC 7517) of the service keys that sign vCon exports:
+        the current key and any retired keys, each `{ kty: "OKP", crv:
+        "Ed25519", x, kid, use: "sig", alg: "EdDSA" }`. A signed export's
+        protected header names its key by `kid`.
+      security: []
+      responses:
+        '200':
+          description: JWK Set
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Jwks' }
+        default: { $ref: '#/components/responses/Error' }
+
 components:
   securitySchemes:
     bearer:
@@ -702,6 +859,19 @@ components:
       in: path
       required: true
       schema: { type: string, format: uuid }
+    VconCommit:
+      name: commit
+      in: query
+      description: Commit sequence number or commit hash (128 hex); the head commit by default
+      schema:
+        oneOf:
+          - { type: integer, minimum: 1 }
+          - { type: string, pattern: '^[0-9a-fA-F]{128}$' }
+    VconForm:
+      name: form
+      in: query
+      description: Overrides `Accept`; `signed` is the default
+      schema: { type: string, enum: [signed, unsigned, gzip] }
   responses:
     Error:
       description: Error
@@ -732,6 +902,7 @@ components:
                 - feature_disabled
                 - invalid_state
                 - database_unavailable
+                - unsupported_extension
                 - internal
             message: { type: string }
             details: {}
@@ -1364,11 +1535,31 @@ components:
           }
     ProfileFields:
       type: object
+      description: |
+        What a participant disclosed at a level. `displayName` and
+        `affiliation` are self-declared; `identifiers` are Cubid-verified
+        identifiers the participant chose to disclose, read from Cubid at
+        disclosure time. Nothing the participant did not disclose appears.
       properties:
         displayName: { type: string }
         affiliation: { type: string }
-        contact: { type: string }
-        linkIdentity: { type: boolean }
+        identifiers:
+          type: array
+          items: { $ref: '#/components/schemas/DisclosedIdentifier' }
+    DisclosedIdentifier:
+      type: object
+      required: [kind, value, status, verifiedBy, syncedAt]
+      properties:
+        kind:
+          type: string
+          description: '`email`, `phone`, `name`, or a social account kind (`github`, ...)'
+        value: { type: string }
+        status: { const: verified }
+        verifiedBy: { const: cubid }
+        syncedAt:
+          type: string
+          format: date-time
+          description: When the identifier was last read from Cubid
     VerificationParticipant:
       type: object
       required:
@@ -1739,3 +1930,100 @@ components:
             workspaces:write,
             invitations:write,
           }
+    Vcon:
+      type: object
+      description: |
+        An unsigned IETF vCon (`draft-ietf-vcon-vcon-core-05`, syntax
+        `0.5.0`) with the `verifymymeeting` extension (spec sections 14 and
+        15). Typed and validated by `@verifymymeeting/vcon`.
+      required: [vcon, uuid, created_at]
+      properties:
+        vcon: { type: string, example: '0.5.0' }
+        uuid: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        subject: { type: string }
+        extensions: { type: array, items: { type: string } }
+        critical: { type: array, items: { type: string } }
+        amended_from: { type: object }
+        redacted_from: { type: object }
+        parties: { type: array, items: { type: object } }
+        dialog: { type: array, items: { type: object } }
+        analysis: { type: array, items: { type: object } }
+        attachments: { type: array, items: { type: object } }
+        sessions: { type: array, items: { type: object } }
+        events: { type: array, items: { type: object } }
+      additionalProperties: true
+    SignedVcon:
+      type: object
+      description: |
+        A signed vCon: JWS General JSON Serialization (RFC 7515 section
+        7.2.1) whose `payload` is the base64url of the unsigned JSON (gzipped
+        for `cty: application/vcon+gzip`). The protected header carries
+        `alg` (`EdDSA`), `kid` (a key in `/.well-known/jwks.json`), `uuid`
+        (the payload's uuid) and `cty`.
+      required: [payload, signatures]
+      properties:
+        payload: { type: string, description: base64url }
+        signatures:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [protected, signature]
+            properties:
+              protected:
+                type: string
+                description: base64url of the JWS Protected Header JSON
+              header:
+                type: object
+                description: Unprotected header (`x5c`, `x5u`, ...), when any
+                additionalProperties: true
+              signature: { type: string, description: base64url }
+    VconImportInput:
+      type: object
+      required: [vcon]
+      properties:
+        vcon:
+          oneOf:
+            - { $ref: '#/components/schemas/Vcon' }
+            - { $ref: '#/components/schemas/SignedVcon' }
+        workspaceId:
+          type: string
+          format: uuid
+          description: Commit onto this workspace instead of creating one
+        message: { type: string, maxLength: 500 }
+    VconImportResult:
+      type: object
+      required: [workspace, commit, imported]
+      properties:
+        workspace: { $ref: '#/components/schemas/Workspace' }
+        commit: { $ref: '#/components/schemas/CommitSummary' }
+        imported:
+          type: object
+          required: [parties, documents, signature]
+          properties:
+            parties: { type: integer }
+            documents: { type: integer }
+            signature:
+              type: string
+              enum: [verified, unverified, none]
+              description: '`verified` when the input was a JWS signed by a service key; `unverified` when signed by an unknown key; `none` when unsigned or email'
+    Jwk:
+      type: object
+      required: [kty, crv, x, kid, use, alg]
+      properties:
+        kty: { const: OKP }
+        crv: { const: Ed25519 }
+        x: { type: string, description: base64url of the 32-byte public key }
+        kid: { type: string }
+        use: { const: sig }
+        alg: { const: EdDSA }
+    Jwks:
+      type: object
+      required: [keys]
+      properties:
+        keys:
+          type: array
+          description: The current service key first, then retired keys
+          items: { $ref: '#/components/schemas/Jwk' }

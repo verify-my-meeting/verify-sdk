@@ -17,9 +17,15 @@ import {
   provenanceTypes,
 } from '@verifymymeeting/sdk'
 import type { Provenance, VmmClient } from '@verifymymeeting/sdk'
+import {
+  resolverFromJwks,
+  unsignedFrom,
+  verifyVcon,
+} from '@verifymymeeting/vcon'
+import type { SignedVcon } from '@verifymymeeting/vcon'
 import { z } from 'zod'
 
-export const MCP_PACKAGE_VERSION = '0.2.0'
+export const MCP_PACKAGE_VERSION = '0.3.0'
 
 export type VmmMcpOptions = {
   baseUrl: string | URL
@@ -354,7 +360,102 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
     ({ kind, id }) => run(() => client.receipt(kind, id)),
   )
 
+  server.registerTool(
+    'vmm_export_vcon',
+    {
+      title: 'Export a workspace as a vCon',
+      description:
+        'Export a workspace (head commit by default, or one commit by sequence number or hash) as an IETF vCon at owner level: parties, dialog and analysis entries for the documents, and the verifymymeeting attachments (attestations, provenance, commitment, receipts). Returns the unsigned document. With verify=true the service signature is checked against the keys at /.well-known/jwks.json and reported as verified, invalid or unverified. Pass raw=true to also get the signed JWS as served.',
+      inputSchema: {
+        workspaceId: z.string().uuid(),
+        commit: z
+          .union([
+            z.number().int().positive(),
+            z.string().regex(/^(\d+|[0-9a-f]{128})$/iu),
+          ])
+          .optional()
+          .describe(
+            'Commit sequence number or SHA-512 commit hash; head by default',
+          ),
+        verify: z
+          .boolean()
+          .optional()
+          .describe(
+            'Verify the service signature against the published JWK Set',
+          ),
+        raw: z
+          .boolean()
+          .optional()
+          .describe('Also return the signed JWS General JSON as served'),
+      },
+    },
+    ({ workspaceId, commit, verify, raw }) =>
+      run(async () => {
+        const signed = (await client.vcon.export(workspaceId, {
+          commit,
+        })) as SignedVcon
+        const vcon = await unsignedFrom(signed)
+        let signature: 'verified' | 'invalid' | 'unverified' = 'unverified'
+        let verification: Record<string, unknown> = {}
+        if (verify) {
+          try {
+            const jwks = await client.vcon.jwks()
+            const result = await verifyVcon(signed, resolverFromJwks(jwks))
+            signature = result.ok ? 'verified' : 'invalid'
+            verification = result.ok
+              ? { kid: result.kid, alg: result.alg }
+              : { kid: result.kid, reason: result.reason }
+          } catch (error) {
+            verification = { reason: `jwks: ${errorText(error)}` }
+          }
+        }
+        return {
+          vcon,
+          signature,
+          ...verification,
+          ...(raw ? { raw: signed } : {}),
+        }
+      }),
+  )
+
+  server.registerTool(
+    'vmm_import_vcon',
+    {
+      title: 'Import a vCon or an email thread',
+      description:
+        'Import an IETF vCon (unsigned, or signed as a JWS General JSON) or an email thread (one RFC 5322 message, or an mbox with mbox=true) into VerifyMyMeeting. Without workspaceId a new workspace is created from the document (title from its subject); with workspaceId the parties and documents are committed onto that workspace. Parties become participant slots, dialog and analysis entries become documents with derived provenance. Unknown critical extension tokens are rejected.',
+      inputSchema: {
+        vcon: z
+          .record(z.string(), z.unknown())
+          .optional()
+          .describe('The vCon object, unsigned or signed'),
+        email: z
+          .string()
+          .optional()
+          .describe('Raw email text (.eml), or an mbox when mbox=true'),
+        mbox: z.boolean().optional().describe('email is an mbox thread'),
+        workspaceId: z.string().uuid().optional(),
+        message: z.string().max(500).optional().describe('Commit message'),
+      },
+    },
+    ({ vcon, email, mbox, workspaceId, message }) =>
+      run(async () => {
+        if ((vcon === undefined) === (email === undefined)) {
+          throw new Error('Pass exactly one of vcon or email.')
+        }
+        if (email !== undefined) {
+          return client.vcon.import({ email, mbox, workspaceId, message })
+        }
+        return client.vcon.import({ vcon: vcon!, workspaceId, message })
+      }),
+  )
+
   return server
+}
+
+function errorText(error: unknown): string {
+  if (error instanceof VmmApiError) return `${error.code}: ${error.message}`
+  return error instanceof Error ? error.message : String(error)
 }
 
 export const toolNames = [
@@ -367,6 +468,8 @@ export const toolNames = [
   'vmm_create_invitation',
   'vmm_get_verification',
   'vmm_get_receipt',
+  'vmm_export_vcon',
+  'vmm_import_vcon',
 ] as const
 
 export function optionsFromEnv(
