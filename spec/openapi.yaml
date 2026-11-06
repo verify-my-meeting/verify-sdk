@@ -563,7 +563,7 @@ paths:
       - name: id
         in: path
         required: true
-        description: Attestation id, commit id, or commit hash (64 hex)
+        description: Attestation id, commit id, or commit hash (128 hex)
         schema: { type: string }
     get:
       tags: [anchoring]
@@ -853,7 +853,7 @@ components:
       name: hash
       in: path
       required: true
-      schema: { type: string, pattern: '^[0-9a-fA-F]{64}$' }
+      schema: { type: string, pattern: '^[0-9a-fA-F]{128}$' }
     WorkspaceId:
       name: id
       in: path

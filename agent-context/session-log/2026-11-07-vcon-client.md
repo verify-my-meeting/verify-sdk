@@ -58,3 +58,7 @@ SHA-512 (128 hex) since protocol 2.0.
 
 Validation: `pnpm format`, `pnpm check`, `pnpm typecheck`, `pnpm test`
 (sdk 21, vcon 39, mcp 6), `pnpm build` all clean.
+
+Follow-up (same day): the `CommitHash` path parameter, the receipts
+description and `vmm_get_history.diffOf` still said 64 hex; now 128 hex
+(SHA-512 commit hashes since protocol 2.0).

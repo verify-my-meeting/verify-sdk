@@ -301,7 +301,7 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
           .describe('Link token for link-visible workspaces'),
         diffOf: z
           .string()
-          .regex(/^[0-9a-f]{64}$/iu)
+          .regex(/^[0-9a-f]{128}$/iu)
           .optional()
           .describe('Also return the diff of this commit hash'),
       },
