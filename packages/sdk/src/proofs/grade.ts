@@ -2,7 +2,7 @@
  * Human-involvement grade (spec section 13). Derived from a document's
  * provenance declaration and the witness statements of its approving
  * participants; never stored or signed. This is the published rule; the
- * VerifyMyMeeting server mirrors it in `src/lib/proofs/grade.ts`.
+ * ProofOfMeetProtocol server mirrors it in `src/lib/proofs/grade.ts`.
  */
 import type { Provenance } from './commit.js'
 

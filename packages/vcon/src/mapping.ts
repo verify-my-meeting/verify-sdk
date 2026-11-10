@@ -1,10 +1,10 @@
 /**
  * `vmm-vcon-mapping` version 1 (protocol spec section 15): the
- * deterministic projection of one VerifyMyMeeting commit onto a vCon at a
+ * deterministic projection of one ProofOfMeetProtocol commit onto a vCon at a
  * viewer level (`toVcon`), the level redaction of an owner-level document
  * (`redactVcon`), and the import plan a vCon yields (`fromVcon`).
  *
- * The input is a plain data bundle the VMM server (or any holder of the
+ * The input is a plain data bundle the POMP server (or any holder of the
  * verification JSON) assembles; nothing here reaches the network. The
  * same input renders byte-identical JSON: arrays are sorted here, object
  * keys are written in a fixed order, and the uuid is a version 5 UUID of
@@ -72,8 +72,8 @@ export type ExportLevel = 'owner' | 'viewer' | 'link' | 'public'
 /** Party `uuid` of the workspace owner and of the service. */
 export const OWNER_PARTY_UUID = 'owner'
 export const SERVICE_PARTY_UUID = 'verifymymeeting.com'
-export const SERVICE_PARTY_NAME = 'VerifyMyMeeting'
-/** `validation` token on every party VerifyMyMeeting vouches for. */
+export const SERVICE_PARTY_NAME = 'ProofOfMeetProtocol'
+/** `validation` token on every party ProofOfMeetProtocol vouches for. */
 export const VMM_VALIDATION = 'verifymymeeting'
 /** Media type of a hash-less link document, carried inline as its URL. */
 export const URI_LIST_MEDIATYPE = 'text/uri-list'
@@ -593,7 +593,7 @@ export async function toVcon(
     dialog: dialog.length > 0 ? dialog.map((_, index) => index) : undefined,
   })
 
-  // VMM attachments, in a fixed order: provenance per document, the
+  // POMP attachments, in a fixed order: provenance per document, the
   // commitment, attestations, receipts, consents, identities.
   for (const { entry, locator, party, record } of entries) {
     const payload: ProvenanceRecord = {
@@ -904,7 +904,7 @@ export type PartyRole = 'owner' | 'participant' | 'service' | 'unknown'
 export type ImportParty = {
   index: number
   role: PartyRole
-  /** The VMM handle when the party came from VerifyMyMeeting. */
+  /** The POMP handle when the party came from ProofOfMeetProtocol. */
   handle: string | null
   name: string | null
   org: string | null
@@ -915,7 +915,7 @@ export type ImportParty = {
 export type ImportDocument = DocumentInput & {
   /** Which vCon entry the document came from. */
   source: EntryLocator
-  /** The VMM document id when the vCon is a VerifyMyMeeting export. */
+  /** The POMP document id when the vCon is a ProofOfMeetProtocol export. */
   documentId?: string
 }
 
@@ -997,7 +997,7 @@ type Shared = {
   documentId?: string
 }
 
-/** One entry's content as a VMM document input, or null when empty. */
+/** One entry's content as a POMP document input, or null when empty. */
 async function documentOf(
   entry: Dialog | Analysis | Attachment,
   shared: Shared,
@@ -1068,7 +1068,7 @@ async function documentOf(
 }
 
 /**
- * Plan the import of a vCon into VerifyMyMeeting: parties become
+ * Plan the import of a vCon into ProofOfMeetProtocol: parties become
  * participant slots, dialog, analysis and attachments become documents
  * with a provenance declaration, and sessions and events are preserved
  * untouched. Throws `UnknownCriticalExtensionError` for a critical

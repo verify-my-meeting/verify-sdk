@@ -1,7 +1,7 @@
 /**
  * Deterministic segmentation of transcript text into Merkle leaves,
  * version `v1`. Mirrors `src/lib/proofs/segmentation.ts` in the
- * VerifyMyMeeting server so a third party can recompute a text record's
+ * ProofOfMeetProtocol server so a third party can recompute a text record's
  * root from the original text.
  *
  * Line endings are normalized to `\n`. If at least 60 percent of non-empty

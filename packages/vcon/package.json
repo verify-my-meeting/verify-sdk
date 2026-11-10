@@ -1,7 +1,7 @@
 {
   "name": "@verifymymeeting/vcon",
   "version": "0.1.0",
-  "description": "IETF vCon (draft-ietf-vcon-vcon-core-05, syntax 0.5.0) types, builder, validator, content hashes, JWS signing, and the VerifyMyMeeting extension and mapping",
+  "description": "IETF vCon (draft-ietf-vcon-vcon-core-05, syntax 0.5.0) types, builder, validator, content hashes, JWS signing, and the ProofOfMeetProtocol extension and mapping",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",

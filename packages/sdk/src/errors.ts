@@ -1,6 +1,6 @@
 import type { ApiErrorBody } from './types.js'
 
-/** A non-2xx response from the VerifyMyMeeting API. */
+/** A non-2xx response from the ProofOfMeetProtocol API. */
 export class VmmApiError extends Error {
   readonly status: number
   readonly code: string

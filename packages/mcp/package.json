@@ -1,7 +1,7 @@
 {
   "name": "@verifymymeeting/mcp",
   "version": "0.3.0",
-  "description": "MCP server for VerifyMyMeeting workspaces, records, invitations, verification, and vCon export and import",
+  "description": "MCP server for ProofOfMeetProtocol workspaces, records, invitations, verification, and vCon export and import",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",

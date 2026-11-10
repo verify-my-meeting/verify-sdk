@@ -1,6 +1,6 @@
 /**
  * The `verifymymeeting` vCon extension (protocol spec section 14): a
- * Compatible extension that adds no parameters. Every VerifyMyMeeting
+ * Compatible extension that adds no parameters. Every ProofOfMeetProtocol
  * object travels as an Attachment Object with a `purpose` from the fixed
  * set below, an inline JSON body (`encoding: "json"`), and a media type
  * `application/vnd.verifymymeeting.<kind>+json`. A reader that does not
@@ -53,7 +53,7 @@ export function vmmMediatype(kind: VmmKind): VmmMediatype {
   return `application/vnd.verifymymeeting.${kind}+json`
 }
 
-/** Where a VMM document landed in the vCon. */
+/** Where a POMP document landed in the vCon. */
 export type EntryLocator = {
   array: 'dialog' | 'analysis' | 'attachments'
   index: number
@@ -86,7 +86,7 @@ export type WitnessStatement = {
 /** `verifymymeeting/provenance`: a document's declaration and statements. */
 export type ProvenanceRecord = {
   v: 1
-  /** VMM document id (stable across versions). */
+  /** POMP document id (stable across versions). */
   doc: string
   label: string
   kind: DocumentKind
@@ -173,7 +173,7 @@ export function kindOfPurpose(purpose: VmmPurpose): VmmKind {
   return purpose.slice('verifymymeeting/'.length) as VmmKind
 }
 
-/** True when the attachment carries a VerifyMyMeeting object. */
+/** True when the attachment carries a ProofOfMeetProtocol object. */
 export function isVmmAttachment(
   attachment: Attachment,
 ): attachment is Attachment & { purpose: VmmPurpose } {
@@ -187,7 +187,7 @@ export type VmmAttachmentPlacement = {
   session?: number | Array<number>
 }
 
-/** Build the attachment for one VMM object. */
+/** Build the attachment for one POMP object. */
 export function vmmAttachment<K extends VmmKind>(
   kind: K,
   payload: VmmPayloadByKind[K],
@@ -212,7 +212,7 @@ export type VmmAttachmentMatch<K extends VmmKind> = {
   payload: VmmPayloadByKind[K]
 }
 
-/** The inline JSON payload of a VMM attachment, or null when malformed. */
+/** The inline JSON payload of a POMP attachment, or null when malformed. */
 export function readVmmPayload<K extends VmmKind>(
   attachment: Attachment,
   kind: K,
@@ -233,7 +233,7 @@ export function readVmmPayload<K extends VmmKind>(
   return null
 }
 
-/** Every attachment of one VMM kind, in array order, with its payload. */
+/** Every attachment of one POMP kind, in array order, with its payload. */
 export function findVmmAttachments<K extends VmmKind>(
   vcon: Pick<Vcon, 'attachments'>,
   kind: K,

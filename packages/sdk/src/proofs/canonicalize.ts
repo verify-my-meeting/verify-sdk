@@ -5,7 +5,7 @@
  * numbers use the ECMAScript serialization (what JSON.stringify produces).
  * `undefined` values are dropped from objects, as in JSON.stringify.
  *
- * Mirrors `src/lib/proofs/canonicalize.ts` in the VerifyMyMeeting server.
+ * Mirrors `src/lib/proofs/canonicalize.ts` in the ProofOfMeetProtocol server.
  */
 export type JsonValue =
   | null

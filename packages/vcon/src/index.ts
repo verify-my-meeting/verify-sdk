@@ -3,7 +3,7 @@
  *
  * IETF vCon (draft-ietf-vcon-vcon-core-05, syntax 0.5.0): types, builder,
  * validator, `content_hash` helpers, JWS signing and verification, the
- * `verifymymeeting` extension, and the VerifyMyMeeting mapping in both
+ * `verifymymeeting` extension, and the ProofOfMeetProtocol mapping in both
  * directions. Browser-safe: Web Crypto only.
  */
 export const PACKAGE_VERSION = '0.1.0'

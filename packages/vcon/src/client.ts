@@ -1,5 +1,5 @@
 /**
- * The vCon endpoints of the VerifyMyMeeting API through the SDK client:
+ * The vCon endpoints of the ProofOfMeetProtocol API through the SDK client:
  * export a workspace as a signed vCon and read it, verify an export
  * against the service JWK Set, and import a vCon. The SDK itself carries
  * no vCon types (this package depends on it, not the other way round), so

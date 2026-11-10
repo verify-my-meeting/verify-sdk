@@ -1,10 +1,10 @@
 /**
- * Typed client for the VerifyMyMeeting REST API (`/api/v1`).
+ * Typed client for the ProofOfMeetProtocol REST API (`/api/v1`).
  *
  * Authenticate with an integrator API key (`vmm_sk_...`) to act as the
  * integrator, or with a consent token (`vmm_ct_...`) to act on behalf of an
  * owner who approved the integrator. Attestation itself is never available
- * through this client: participants attest only in VerifyMyMeeting under
+ * through this client: participants attest only in ProofOfMeetProtocol under
  * their own session.
  */
 import { VmmApiError } from './errors.js'
@@ -53,7 +53,7 @@ export type FetchLike = (
 ) => Promise<Response>
 
 export type ClientOptions = {
-  /** Origin of the VerifyMyMeeting deployment, e.g. `https://verifymymeeting.com`. */
+  /** Origin of the ProofOfMeetProtocol deployment, e.g. `https://verifymymeeting.com`. */
   baseUrl: string | URL
   /** `vmm_sk_...` or `vmm_ct_...`. Omit for public reads. */
   token?: string
@@ -173,7 +173,7 @@ export function createClient(options: ClientOptions) {
       request<{ linkToken: string }>('POST', `/api/v1/workspaces/${id}/link`),
     /**
      * Counts across workspaces the caller owns: distinct participants by
-     * VMM's internal identity, lowest score, withdrawals. Handles never
+     * POMP's internal identity, lowest score, withdrawals. Handles never
      * cross; integrators use this for study-level lines.
      */
     aggregate: (workspaceIds: Array<string>) =>
@@ -413,7 +413,7 @@ function numberHeader(response: Response, name: string): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-/** Build the URL that sends an owner to VerifyMyMeeting to approve access. */
+/** Build the URL that sends an owner to ProofOfMeetProtocol to approve access. */
 export function buildAuthorizeUrl(input: {
   baseUrl: string | URL
   clientId: string

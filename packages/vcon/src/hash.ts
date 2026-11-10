@@ -2,7 +2,7 @@
  * `content_hash` tokens (draft section 2.2 "ContentHash" and 2.4.2):
  * `<alg>-<base64url digest>` over the bytes of the referenced content.
  * SHA-512 is mandatory; `sha256` is accepted on verification because the
- * draft allows other IANA-recommended algorithms and VerifyMyMeeting
+ * draft allows other IANA-recommended algorithms and ProofOfMeetProtocol
  * carries owner-supplied SHA-256 digests for `link` and `hash` documents.
  * Browser-safe: Web Crypto only.
  */

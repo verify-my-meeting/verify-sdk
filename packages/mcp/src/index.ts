@@ -1,7 +1,7 @@
 /**
  * @verifymymeeting/mcp
  *
- * MCP server exposing VerifyMyMeeting as tools, so notetaker agents and
+ * MCP server exposing ProofOfMeetProtocol as tools, so notetaker agents and
  * research agents can produce verified meetings as a side effect of their
  * normal work. Wraps `@verifymymeeting/sdk`; authenticate with an
  * integrator API key or a consent token.
@@ -423,7 +423,7 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
     {
       title: 'Import a vCon or an email thread',
       description:
-        'Import an IETF vCon (unsigned, or signed as a JWS General JSON) or an email thread (one RFC 5322 message, or an mbox with mbox=true) into VerifyMyMeeting. Without workspaceId a new workspace is created from the document (title from its subject); with workspaceId the parties and documents are committed onto that workspace. Parties become participant slots, dialog and analysis entries become documents with derived provenance. Unknown critical extension tokens are rejected.',
+        'Import an IETF vCon (unsigned, or signed as a JWS General JSON) or an email thread (one RFC 5322 message, or an mbox with mbox=true) into ProofOfMeetProtocol. Without workspaceId a new workspace is created from the document (title from its subject); with workspaceId the parties and documents are committed onto that workspace. Parties become participant slots, dialog and analysis entries become documents with derived provenance. Unknown critical extension tokens are rejected.',
       inputSchema: {
         vcon: z
           .record(z.string(), z.unknown())
@@ -477,6 +477,6 @@ export function optionsFromEnv(
 ): VmmMcpOptions {
   const baseUrl = env.VMM_BASE_URL?.trim()
   if (!baseUrl)
-    throw new Error('Set VMM_BASE_URL to the VerifyMyMeeting origin.')
+    throw new Error('Set VMM_BASE_URL to the ProofOfMeetProtocol origin.')
   return { baseUrl, token: env.VMM_TOKEN?.trim() || undefined }
 }

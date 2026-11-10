@@ -1,4 +1,4 @@
-# VerifyMyMeeting protocol specification
+# ProofOfMeetProtocol protocol specification
 
 Version 2.0, 2026-11-07: SHA-512 is the protocol hash throughout (commit
 body and receipt version 2; owner-supplied SHA-256 digests still accepted
@@ -160,7 +160,7 @@ carried record roots instead; their receipts stay valid). A commit's receipt
 plus the chain proves the whole package history existed by the batch time. The batch root is submitted as a
 64-byte digest to an OpenTimestamps calendar (`POST /digest`; the public
 calendars accept digests up to 64 bytes); the returned pending proof is
-stored and served as base64. VerifyMyMeeting also signs
+stored and served as base64. ProofOfMeetProtocol also signs
 `"vmm-batch:<batchId>:<rootHex>:<leafCount>"` (message = SHA-512 of that
 string) with a service Ed25519 key published at `GET /api/v1/batches`.
 
@@ -282,7 +282,7 @@ commits; the server stores every record version and computes the diff.
 the same value, and a broken-parent case.
 
 The export of a chain as a git repository whose commit messages carry these
-hashes is planned; the VMM hash, not a git hash, is what attestations name.
+hashes is planned; the POMP hash, not a git hash, is what attestations name.
 
 ## 13. Provenance declarations, witness statements, and the grade
 
@@ -335,7 +335,7 @@ pre-fills; it is a convenience, not part of the rule.
 
 ## 14. vCon extension `verifymymeeting`
 
-VerifyMyMeeting exports a workspace as an IETF vCon
+ProofOfMeetProtocol exports a workspace as an IETF vCon
 (`draft-ietf-vcon-vcon-core-05`, syntax version `0.5.0`; the package
 `@verifymymeeting/vcon` pins the revision in `DRAFT_REVISION`). The vCon is
 the container; this extension is the verification layer inside it. Until
@@ -345,7 +345,7 @@ specification document.
 - **Extension name**: `verifymymeeting`. It appears in `extensions` of
   every vCon that uses it and never in `critical`.
 - **Parameters**: none. The extension defines no new parameters, objects,
-  type tokens or encodings. Every VerifyMyMeeting object is an Attachment
+  type tokens or encodings. Every ProofOfMeetProtocol object is an Attachment
   Object (draft section 4.6) with a `purpose` from the table below, an
   inline JSON body (`encoding: "json"`), the media type
   `application/vnd.verifymymeeting.<kind>+json`, `start`, `party` set to
@@ -357,7 +357,7 @@ specification document.
   ignoring the attachment bodies. No existing semantics are changed.
 - **Privacy**: an attachment body may carry a handle, a humanity-score
   snapshot, and, in `identity` and `consent` records, personal data the
-  participant chose to disclose. VerifyMyMeeting redacts by omission
+  participant chose to disclose. ProofOfMeetProtocol redacts by omission
   (section 15.5); `redacted_strings` is not used, and a redactor that
   removes an attachment removes the whole object.
 - **External references**: none beyond the core `url` + `content_hash`
@@ -372,7 +372,7 @@ specification document.
 | `verifymymeeting/consent`     | `{ handle, entries: [{ scope, to, at, fields? }] }`: what the participant disclosed or granted, to whom, and when.                                                                                                                                                           |
 | `verifymymeeting/identity`    | `{ handle, identifiers: [{ kind, value, verifiedBy: "cubid", verifiedAt?, status }], displayName?, affiliation? }`: Cubid-verified identifiers the participant disclosed at this level, plus self-declared labels.                                                           |
 
-Verification rules a VerifyMyMeeting-aware reader applies, each with the
+Verification rules a ProofOfMeetProtocol-aware reader applies, each with the
 SDK function that implements it:
 
 1. The JWS signature of the signed form verifies against a key in
@@ -436,7 +436,7 @@ validation: "verifymymeeting", name?, org? }`.
   `identity` attachment. Withdrawn participants remain as `anonymous`
   parties (their attestations are tombstones).
 - The last party is the service: `{ uuid: "verifymymeeting.com", type:
-"organization", name: "VerifyMyMeeting" }`, the `party` of receipts.
+"organization", name: "ProofOfMeetProtocol" }`, the `party` of receipts.
 - Exactly one Session Object (the draft requires one when `dialog` is
   non-empty): `start` = actual start, else scheduled start, else commit
   time; `duration` = the scheduled minutes in seconds; `parties` = owner
@@ -535,7 +535,7 @@ document becomes a plan:
   `content_hash` → `link` with `hashHex`/`hashAlg` from the first
   supported token; `content_hash` alone → `hash`.
 - The provenance declaration comes from the `provenance` attachment when
-  the vCon is a VerifyMyMeeting export (with the original document id and
+  the vCon is a ProofOfMeetProtocol export (with the original document id and
   label); otherwise it is derived: `dialog` `text` → `transcript`,
   `recording` → `recording`, both `created: during`, `ai: none`, creators
   from the party roles of `parties` (`other-human` when unknown);

@@ -4,7 +4,7 @@ TypeScript for the IETF vCon conversation container
 (`draft-ietf-vcon-vcon-core-05`, syntax version `0.5.0`): types for the
 unsigned, signed and encrypted forms, a builder, a structural validator,
 `content_hash` helpers, JWS General JSON signing and verification, the
-`verifymymeeting` extension, and the VerifyMyMeeting mapping in both
+`verifymymeeting` extension, and the ProofOfMeetProtocol mapping in both
 directions (`vmm-vcon-mapping` version 1). Browser-safe: Web Crypto only,
 no Node imports outside tests. Apache-2.0.
 
@@ -93,11 +93,11 @@ const unverified = await unsignedFrom(signed) // read without verifying
 `verifyVcon` accepts `EdDSA`, `ES256` and `RS256`, resolves keys by `kid`
 (a `CryptoKey` or a JWK), checks the `uuid` header against the payload, and
 gunzips a compressed payload. The draft requires `x5c` or `x5u` in the
-unprotected header; VerifyMyMeeting serves a JWK Set instead and this
+unprotected header; ProofOfMeetProtocol serves a JWK Set instead and this
 package neither emits nor requires a certificate chain (pass one through
 `header` if a partner needs it).
 
-## Exporting and importing VerifyMyMeeting workspaces
+## Exporting and importing ProofOfMeetProtocol workspaces
 
 ```ts
 import { toVcon, redactVcon, fromVcon } from '@verifymymeeting/vcon'

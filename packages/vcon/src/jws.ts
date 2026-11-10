@@ -3,14 +3,14 @@
  * (RFC 7515 section 7.2.1) around the unsigned form. Web Crypto only.
  *
  * Signing uses `EdDSA` (Ed25519) by default, the algorithm of the
- * VerifyMyMeeting service key, or `ES256` for a P-256 key. Verification
+ * ProofOfMeetProtocol service key, or `ES256` for a P-256 key. Verification
  * additionally accepts `RS256`, the algorithm the draft recommends for
  * interoperability. `alg` is never `none`.
  *
  * Header placement: `alg`, `kid`, `uuid` and `cty` go in the JWS Protected
  * Header so they are integrity protected (the draft says `alg` SHOULD be
  * protected and registers `uuid` for either header). The draft requires
- * `x5c` or `x5u` in the unprotected header; VerifyMyMeeting publishes its
+ * `x5c` or `x5u` in the unprotected header; ProofOfMeetProtocol publishes its
  * keys as a JWK Set instead, so neither is emitted unless passed in
  * `header`, and verification does not require them.
  */

@@ -1,5 +1,5 @@
 /**
- * Request and response shapes of the VerifyMyMeeting REST API, version 1.
+ * Request and response shapes of the ProofOfMeetProtocol REST API, version 1.
  * Hand-written against the server's domain modules; `spec/openapi.yaml` is
  * the published contract.
  */

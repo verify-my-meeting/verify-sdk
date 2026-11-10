@@ -7,7 +7,7 @@
  * n. A single-leaf tree's root is its leaf hash. The empty tree's root is
  * SHA-512 of the empty string. (Protocol spec 2.0: SHA-512 throughout.)
  *
- * Mirrors `src/lib/proofs/merkle.ts` in the VerifyMyMeeting server. Web
+ * Mirrors `src/lib/proofs/merkle.ts` in the ProofOfMeetProtocol server. Web
  * Crypto digests are asynchronous, so every hashing function here returns a
  * Promise.
  */

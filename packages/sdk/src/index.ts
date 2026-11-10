@@ -1,7 +1,7 @@
 /**
  * @verifymymeeting/sdk
  *
- * Typed client for the VerifyMyMeeting REST API, protocol types, and
+ * Typed client for the ProofOfMeetProtocol REST API, protocol types, and
  * browser-safe proof verification (RFC 8785 canonicalization, RFC 6962
  * Merkle trees, inclusion receipts, Ed25519 signatures).
  */

@@ -3,7 +3,7 @@
  * workspace. A commit names its parent, a tree of documents, an author, a
  * time, a message, and a kind, and is hashed as
  * `SHA-512(canonicalize(body))` (body version 2, spec 2.0). Mirrors `src/lib/proofs/commit.ts` in the
- * VerifyMyMeeting server; browser-safe.
+ * ProofOfMeetProtocol server; browser-safe.
  */
 import { sha512, toHex, utf8 } from './bytes.js'
 import { canonicalize } from './canonicalize.js'

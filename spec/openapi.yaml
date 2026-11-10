@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: VerifyMyMeeting API
+  title: ProofOfMeetProtocol API
   version: '2.0'
   description: |
     Meeting attestation infrastructure. Each workspace keeps one linear,
@@ -17,7 +17,7 @@ info:
     behalf of the owner who approved the integrator). Verification pages,
     receipts, and batches are readable without credentials. Attestation and
     withdrawal are available only to a signed-in participant in the
-    VerifyMyMeeting web application and are therefore not in this document.
+    ProofOfMeetProtocol web application and are therefore not in this document.
 
     vCon: every workspace commit is also an IETF vCon
     (`draft-ietf-vcon-vcon-core-05`, syntax `0.5.0`, spec sections 14 and
@@ -692,7 +692,7 @@ paths:
       tags: [workspaces]
       summary: Counts across workspaces the caller owns
       description: |
-        Distinct participants (by VerifyMyMeeting's internal identity, never
+        Distinct participants (by ProofOfMeetProtocol's internal identity, never
         by handle), lowest score snapshot, withdrawals, and attestation
         counts across a set of workspaces. Workspaces the caller does not
         own are listed under `unavailable` and left out of the counts.
@@ -747,7 +747,7 @@ paths:
       description: |
         Final step of the OAuth 2.1 authorization-code flow with PKCE. The
         owner is first sent to `/connect/authorize?client_id&redirect_uri&state&code_challenge&code_challenge_method=S256&scope`
-        on the VerifyMyMeeting web application and redirected back with `code`
+        on the ProofOfMeetProtocol web application and redirected back with `code`
         and `state`.
       security: []
       requestBody:

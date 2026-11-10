@@ -199,7 +199,7 @@ describe('uuidv5', () => {
     expect(await uuidv5(DNS_NAMESPACE, 'www.example.com')).toBe(expected)
   })
 
-  it('derives the VerifyMyMeeting namespace from the DNS namespace', async () => {
+  it('derives the ProofOfMeetProtocol namespace from the DNS namespace', async () => {
     expect(await uuidv5(DNS_NAMESPACE, 'verifymymeeting.com/vcon')).toBe(
       VMM_VCON_NAMESPACE,
     )

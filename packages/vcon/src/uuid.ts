@@ -4,7 +4,7 @@
  * with the version and variant bits set. Web Crypto SHA-1; browser-safe.
  *
  * The draft recommends version 8 UUIDs derived from a time and the signing
- * domain (section 4.1.2, a SHOULD). VerifyMyMeeting uses version 5 over the
+ * domain (section 4.1.2, a SHOULD). ProofOfMeetProtocol uses version 5 over the
  * commit hash instead so that re-rendering a commit yields the same uuid.
  */
 import { toHex, utf8 } from '@verifymymeeting/sdk'
@@ -15,7 +15,7 @@ export const URL_NAMESPACE = '6ba7b811-9dad-11d1-80b4-00c04fd430c8'
 
 /**
  * `uuidv5(DNS_NAMESPACE, 'verifymymeeting.com/vcon')`: the namespace under
- * which VerifyMyMeeting derives every vCon uuid (spec section 15).
+ * which ProofOfMeetProtocol derives every vCon uuid (spec section 15).
  */
 export const VMM_VCON_NAMESPACE = '71a32ea6-9a91-57a1-865b-62e4bff8c148'
 
@@ -60,7 +60,7 @@ export async function uuidv5(
   return bytesToUuid(out)
 }
 
-/** The uuid VerifyMyMeeting gives the vCon of one commit at one level. */
+/** The uuid ProofOfMeetProtocol gives the vCon of one commit at one level. */
 export function vmmVconUuid(
   commitHashHex: string,
   level: 'owner' | 'viewer' | 'link' | 'public' = 'owner',
