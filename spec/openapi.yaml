@@ -155,6 +155,61 @@ paths:
               schema: { $ref: '#/components/schemas/Workspace' }
         default: { $ref: '#/components/responses/Error' }
 
+  /api/v1/workspaces/{id}/policy:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    patch:
+      tags: [workspaces]
+      summary: Merge a change to the attestation policy
+      description: |
+        Only the keys given change; a null value clears that condition
+        (`autoConfirm: null` returns to the service default). One audit row
+        per change. Consent tokens need `workspaces:write`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PolicyInput' }
+      responses:
+        '200':
+          description: Updated workspace
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Workspace' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}/documents/{documentId}:
+    parameters:
+      - { $ref: '#/components/parameters/WorkspaceId' }
+      - name: documentId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: key
+        in: query
+        required: false
+        schema: { type: string }
+        description: Link token for `link` workspaces
+    get:
+      tags: [records]
+      summary: Current content of a document by document id
+      description: |
+        Text records answer with the text as `text/plain`; links and
+        digests answer with `{ record }` as JSON. Read at the caller's
+        level, like the record itself.
+      security: [{}, { bearer: [] }]
+      responses:
+        '200':
+          description: Content
+          content:
+            text/plain:
+              schema: { type: string }
+            application/json:
+              schema:
+                type: object
+                properties:
+                  record: { $ref: '#/components/schemas/RecordSummary' }
+        default: { $ref: '#/components/responses/Error' }
+
   /api/v1/workspaces/{id}/visibility:
     parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
     post:
@@ -444,6 +499,82 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Invitation' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}/invitations/{invitationId}/code:
+    parameters:
+      - { $ref: '#/components/parameters/WorkspaceId' }
+      - { $ref: '#/components/parameters/InvitationId' }
+    post:
+      tags: [invitations]
+      summary: Give an open invitation a three-word code
+      description: |
+        Open invitations only; the code is returned and stored for the owner
+        to read back. Participants join at `/join` by code. Consent tokens
+        need `invitations:write`.
+      responses:
+        '200':
+          description: The code
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code]
+                properties:
+                  code: { type: string, example: amber-river-stone }
+        default: { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [invitations]
+      summary: Clear the invitation's code
+      responses:
+        '200':
+          description: Cleared
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { ok: { type: boolean } }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}/invitations/{invitationId}/kiosk:
+    parameters:
+      - { $ref: '#/components/parameters/WorkspaceId' }
+      - { $ref: '#/components/parameters/InvitationId' }
+    get:
+      tags: [invitations]
+      summary: One kiosk frame for an open invitation
+      description: |
+        A thirty-second join token as a URL and a QR in SVG, for a screen at
+        the door; poll it on the token interval. Consent tokens need
+        `invitations:write`.
+      responses:
+        '200':
+          description: Frame
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/KioskFrame' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}/invitations/{invitationId}/qr:
+    parameters:
+      - { $ref: '#/components/parameters/WorkspaceId' }
+      - { $ref: '#/components/parameters/InvitationId' }
+    get:
+      tags: [invitations]
+      summary: The kiosk frame as an SVG image
+      description: |
+        The same frame as `/kiosk`, served as `image/svg+xml` with the
+        token's expiry in `x-kiosk-expires-at`, for integrators that embed
+        the rotating QR directly.
+      responses:
+        '200':
+          description: SVG
+          headers:
+            x-kiosk-expires-at:
+              schema: { type: string, format: date-time }
+          content:
+            image/svg+xml:
+              schema: { type: string }
         default: { $ref: '#/components/responses/Error' }
 
   /api/v1/invitations/{token}:
@@ -921,13 +1052,26 @@ components:
     bearer:
       type: http
       scheme: bearer
-      description: '`pomp_sk_...` integrator API key or `pomp_ct_...` consent token'
+      description: |
+        `pomp_sk_...` integrator API key or `pomp_ct_...` consent token. A
+        consent token acts for the account that granted it within its
+        scopes: `workspaces:read` for every read of the owner's workspaces,
+        `workspaces:write` for every owner write (details, status,
+        visibility, link, policy, records, commits, confirmations, delete),
+        `invitations:write` for creating, revoking and coding invitations
+        and for kiosk frames, `participant:read` for the participation
+        list. A write without its scope is a 403 `forbidden`.
   parameters:
     CommitHash:
       name: hash
       in: path
       required: true
       schema: { type: string, pattern: '^[0-9a-fA-F]{128}$' }
+    InvitationId:
+      name: invitationId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
     WorkspaceId:
       name: id
       in: path
@@ -1011,6 +1155,7 @@ components:
           publicSlug,
           minScore,
           publicAckAt,
+          policy,
           createdAt,
           updatedAt,
         ]
@@ -1030,8 +1175,33 @@ components:
         publicSlug: { type: [string, 'null'] }
         minScore: { type: [number, 'null'] }
         publicAckAt: { type: [string, 'null'], format: date-time }
+        policy: { $ref: '#/components/schemas/Policy' }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    Policy:
+      type: object
+      description: The attestation policy block (spec section 6); null is no condition
+      required:
+        [attestFrom, attestUntil, maxAttesters, minPresenceMinutes, autoConfirm]
+      properties:
+        attestFrom: { type: [string, 'null'], format: date-time }
+        attestUntil: { type: [string, 'null'], format: date-time }
+        maxAttesters: { type: [integer, 'null'], minimum: 1, maximum: 10000 }
+        minPresenceMinutes:
+          { type: [integer, 'null'], minimum: 0, maximum: 1440 }
+        autoConfirm:
+          type: [boolean, 'null']
+          description: Confirm attendance automatically; null is the service default
+    PolicyInput:
+      type: object
+      description: Keys to change; a null clears that condition
+      properties:
+        attestFrom: { type: [string, 'null'], format: date-time }
+        attestUntil: { type: [string, 'null'], format: date-time }
+        maxAttesters: { type: [integer, 'null'], minimum: 1, maximum: 10000 }
+        minPresenceMinutes:
+          { type: [integer, 'null'], minimum: 0, maximum: 1440 }
+        autoConfirm: { type: [boolean, 'null'] }
     WorkspaceInput:
       type: object
       properties:
@@ -1454,6 +1624,15 @@ components:
         invitation: { $ref: '#/components/schemas/Invitation' }
         token: { type: string }
         url: { type: string, format: uri }
+    KioskFrame:
+      type: object
+      required: [token, expiresAt, url, svg, code]
+      properties:
+        token: { type: string }
+        expiresAt: { type: string, format: date-time }
+        url: { type: string, format: uri }
+        svg: { type: string }
+        code: { type: [string, 'null'] }
     InvitationPreview:
       type: object
       required: [usable, reason, kind, expiresAt, workspace, signedIn]

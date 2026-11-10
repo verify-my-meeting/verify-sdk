@@ -26,12 +26,14 @@ import type {
   Invitation,
   InvitationInput,
   InvitationPreview,
+  KioskFrame,
   Jwks,
   ListResponse,
   Me,
   Participant,
   Participation,
   ReceiptResponse,
+  PolicyInput,
   RecordContent,
   RecordInput,
   RecordSummary,
@@ -175,6 +177,9 @@ export function createClient(options: ClientOptions) {
       }),
     rotateLink: (id: string) =>
       request<{ linkToken: string }>('POST', `/api/v1/workspaces/${id}/link`),
+    /** Merge a policy change; a null value clears that condition. */
+    updatePolicy: (id: string, input: PolicyInput) =>
+      request<Workspace>('PATCH', `/api/v1/workspaces/${id}/policy`, input),
     /**
      * Counts across workspaces the caller owns: distinct participants by
      * POMP's internal identity, lowest score, withdrawals. Handles never
@@ -211,6 +216,27 @@ export function createClient(options: ClientOptions) {
         undefined,
         { query: { key: linkKey } },
       ),
+    /**
+     * The current text of a document by document id, at the caller's
+     * level: plain text for text records; for links and digests the
+     * record summary as JSON (`{ record }`).
+     */
+    content: async (
+      workspaceId: string,
+      documentId: string,
+      linkKey?: string,
+    ): Promise<{ text: string } | { record: RecordSummary }> => {
+      const response = await send(
+        'GET',
+        `/api/v1/workspaces/${workspaceId}/documents/${documentId}`,
+        undefined,
+        { query: { key: linkKey }, accept: 'text/plain, application/json' },
+      )
+      if (response.headers.get('content-type')?.startsWith('text/plain')) {
+        return { text: await response.text() }
+      }
+      return (await response.json()) as { record: RecordSummary }
+    },
   }
 
   const commits = {
@@ -272,6 +298,36 @@ export function createClient(options: ClientOptions) {
     /** What an invitation link shows before sign-in. */
     preview: (token: string) =>
       request<InvitationPreview>('GET', `/api/v1/invitations/${token}`),
+    /** Give an open invitation a three-word code (`invitations:write`). */
+    setCode: (workspaceId: string, invitationId: string) =>
+      request<{ code: string }>(
+        'POST',
+        `/api/v1/workspaces/${workspaceId}/invitations/${invitationId}/code`,
+      ),
+    clearCode: (workspaceId: string, invitationId: string) =>
+      request<{ ok: true }>(
+        'DELETE',
+        `/api/v1/workspaces/${workspaceId}/invitations/${invitationId}/code`,
+      ),
+    /** One kiosk frame: a thirty-second join token as URL and SVG. */
+    kiosk: (workspaceId: string, invitationId: string) =>
+      request<KioskFrame>(
+        'GET',
+        `/api/v1/workspaces/${workspaceId}/invitations/${invitationId}/kiosk`,
+      ),
+    /** The same frame as an SVG document, for direct embedding. */
+    qr: async (workspaceId: string, invitationId: string) => {
+      const response = await send(
+        'GET',
+        `/api/v1/workspaces/${workspaceId}/invitations/${invitationId}/qr`,
+        undefined,
+        { accept: 'image/svg+xml' },
+      )
+      return {
+        svg: await response.text(),
+        expiresAt: response.headers.get('x-kiosk-expires-at'),
+      }
+    },
   }
 
   const participants = {

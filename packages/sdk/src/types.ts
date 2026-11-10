@@ -30,7 +30,12 @@ export type AttestationKind =
   'attendance' | 'record' | 'disclosure' | 'confirmed'
 export type ConfirmationMode = 'automatic' | 'manual'
 /** Who signed a confirmation. More kinds follow when owners hold keys. */
-export type ConfirmerRef = { kind: 'service'; role: 'owner'; account: string }
+/**
+ * Who signed a confirmation. `ref` is the owner's reference in that
+ * workspace (spec 6.1): a keyed hash, stable within the workspace and
+ * unrelated across workspaces, never an account id.
+ */
+export type ConfirmerRef = { kind: 'service'; role: 'owner'; ref: string }
 export type BatchStatus = 'building' | 'submitted' | 'confirmed' | 'failed'
 
 export type ErrorCode =
@@ -69,9 +74,25 @@ export type Workspace = {
   publicSlug: string | null
   minScore: number | null
   publicAckAt: string | null
+  policy: Policy
   createdAt: string
   updatedAt: string
 }
+
+/**
+ * The attestation policy block (spec 6; PATCH `/workspaces/:id/policy`).
+ * Null means no condition, or for `autoConfirm` the service default.
+ */
+export type Policy = {
+  attestFrom: string | null
+  attestUntil: string | null
+  maxAttesters: number | null
+  minPresenceMinutes: number | null
+  autoConfirm: boolean | null
+}
+
+/** A partial policy; a null value clears that condition. */
+export type PolicyInput = Partial<Policy>
 
 export type WorkspaceInput = {
   title: string
@@ -213,6 +234,19 @@ export type CreatedInvitation = {
   token: string
   /** Absolute URL of the invitation page. */
   url: string
+}
+
+/**
+ * One kiosk frame (`GET .../invitations/:id/kiosk`): a thirty-second join
+ * token as a URL and a QR in SVG, for an open invitation shown on a screen.
+ * `code` is the invitation's three-word code when one is set.
+ */
+export type KioskFrame = {
+  token: string
+  expiresAt: string
+  url: string
+  svg: string
+  code: string | null
 }
 
 export type InvitationPreview = {

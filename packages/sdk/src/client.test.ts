@@ -49,6 +49,46 @@ describe('createClient', () => {
     expect(client.rateLimit.remaining).toBe(599)
   })
 
+  it('reads the kiosk QR as SVG and merges a policy change', async () => {
+    const { calls, fetchLike } = fakeFetch(({ url }) =>
+      url.pathname.endsWith('/qr')
+        ? new Response('<svg/>', {
+            headers: {
+              'content-type': 'image/svg+xml',
+              'x-kiosk-expires-at': '2026-11-10T12:00:30.000Z',
+            },
+          })
+        : new Response(
+            JSON.stringify({ id: 'w1', policy: { maxAttesters: 5 } }),
+            {
+              headers: { 'content-type': 'application/json' },
+            },
+          ),
+    )
+    const client = createClient({
+      baseUrl: 'https://pomp.example',
+      token: 'pomp_ct_test',
+      fetch: fetchLike,
+    })
+    const frame = await client.invitations.qr('w1', 'i1')
+    expect(frame).toEqual({
+      svg: '<svg/>',
+      expiresAt: '2026-11-10T12:00:30.000Z',
+    })
+    expect(calls[0]!.url.pathname).toBe(
+      '/api/v1/workspaces/w1/invitations/i1/qr',
+    )
+    expect((calls[0]!.init.headers as Record<string, string>).accept).toBe(
+      'image/svg+xml',
+    )
+    const workspace = await client.workspaces.updatePolicy('w1', {
+      maxAttesters: 5,
+    })
+    expect(workspace.policy.maxAttesters).toBe(5)
+    expect(calls[1]!.init.method).toBe('PATCH')
+    expect(calls[1]!.url.pathname).toBe('/api/v1/workspaces/w1/policy')
+  })
+
   it('maps error bodies to PompApiError', async () => {
     const { fetchLike } = fakeFetch(
       () =>

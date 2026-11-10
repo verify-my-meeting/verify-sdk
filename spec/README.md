@@ -248,7 +248,17 @@ server-side; handles are unlinkable across workspaces by construction.
 
 ## 11. API and MCP
 
-See `openapi.yaml`. The MCP server (`@proofofmeet/mcp`) exposes
+See `openapi.yaml`. Three credentials reach the API: an owner session
+(the web application), an integrator API key (`pomp_sk_`), and a consent
+token (`pomp_ct_`) granted by an owner to an integrator through the OAuth
+2.1 flow. A consent token acts for that owner within its scopes:
+`workspaces:read` for reads, `workspaces:write` for every owner write
+(details, status, visibility, link, policy, records, commits,
+confirmations, delete), `invitations:write` for creating, revoking and
+coding invitations and for kiosk frames, and `participant:read` for the
+participation list. A write without its scope is a 403.
+
+The MCP server (`@proofofmeet/mcp`) exposes
 `pomp_list_workspaces`, `pomp_create_workspace`, `pomp_get_workspace`,
 `pomp_attach_record`, `pomp_commit_records`, `pomp_get_history`,
 `pomp_create_invitation`, `pomp_get_verification`, `pomp_get_receipt`,
