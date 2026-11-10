@@ -1,37 +1,33 @@
 /**
- * @verifymymeeting/mcp
+ * @proofofmeet/mcp
  *
  * MCP server exposing ProofOfMeetProtocol as tools, so notetaker agents and
  * research agents can produce verified meetings as a side effect of their
- * normal work. Wraps `@verifymymeeting/sdk`; authenticate with an
+ * normal work. Wraps `@proofofmeet/sdk`; authenticate with an
  * integrator API key or a consent token.
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import {
-  VmmApiError,
+  PompApiError,
   aiInvolvements,
   aiRoles,
   createClient,
   createdWhen,
   creators,
   provenanceTypes,
-} from '@verifymymeeting/sdk'
-import type { Provenance, VmmClient } from '@verifymymeeting/sdk'
-import {
-  resolverFromJwks,
-  unsignedFrom,
-  verifyVcon,
-} from '@verifymymeeting/vcon'
-import type { SignedVcon } from '@verifymymeeting/vcon'
+} from '@proofofmeet/sdk'
+import type { Provenance, PompClient } from '@proofofmeet/sdk'
+import { resolverFromJwks, unsignedFrom, verifyVcon } from '@proofofmeet/vcon'
+import type { SignedVcon } from '@proofofmeet/vcon'
 import { z } from 'zod'
 
 export const MCP_PACKAGE_VERSION = '0.3.0'
 
-export type VmmMcpOptions = {
+export type PompMcpOptions = {
   baseUrl: string | URL
   token?: string
   /** For tests: inject a client instead of building one. */
-  client?: VmmClient
+  client?: PompClient
 }
 
 const hex64 = z
@@ -147,7 +143,7 @@ function ok(data: unknown) {
 
 function fail(error: unknown) {
   let message: string
-  if (error instanceof VmmApiError) {
+  if (error instanceof PompApiError) {
     message = `${error.code} (${error.status}): ${error.message}`
   } else if (error instanceof Error) {
     message = error.message
@@ -165,17 +161,17 @@ async function run(fn: () => Promise<unknown>) {
   }
 }
 
-export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
+export function createVmmMcpServer(options: PompMcpOptions): McpServer {
   const client =
     options.client ??
     createClient({ baseUrl: options.baseUrl, token: options.token })
   const server = new McpServer({
-    name: 'verifymymeeting',
+    name: 'proofofmeet',
     version: MCP_PACKAGE_VERSION,
   })
 
   server.registerTool(
-    'vmm_list_workspaces',
+    'pomp_list_workspaces',
     {
       title: 'List meeting workspaces',
       description:
@@ -186,11 +182,11 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
   )
 
   server.registerTool(
-    'vmm_create_workspace',
+    'pomp_create_workspace',
     {
       title: 'Create a meeting workspace',
       description:
-        'Create a workspace for one meeting. It starts private and in draft; open it with vmm_get_workspace after attaching records and creating invitations.',
+        'Create a workspace for one meeting. It starts private and in draft; open it with pomp_get_workspace after attaching records and creating invitations.',
       inputSchema: {
         title: z.string().min(1).max(200),
         description: z.string().max(5000).optional(),
@@ -220,7 +216,7 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
   )
 
   server.registerTool(
-    'vmm_get_workspace',
+    'pomp_get_workspace',
     {
       title: 'Get a meeting workspace',
       description:
@@ -241,7 +237,7 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
   )
 
   server.registerTool(
-    'vmm_attach_record',
+    'pomp_attach_record',
     {
       title: 'Add a document to a workspace',
       description:
@@ -262,7 +258,7 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
   )
 
   server.registerTool(
-    'vmm_commit_records',
+    'pomp_commit_records',
     {
       title: 'Commit several document changes',
       description:
@@ -288,7 +284,7 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
   )
 
   server.registerTool(
-    'vmm_get_history',
+    'pomp_get_history',
     {
       title: 'Get the commit history of a workspace',
       description:
@@ -315,7 +311,7 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
   )
 
   server.registerTool(
-    'vmm_create_invitation',
+    'pomp_create_invitation',
     {
       title: 'Create an invitation link',
       description:
@@ -336,7 +332,7 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
   )
 
   server.registerTool(
-    'vmm_get_verification',
+    'pomp_get_verification',
     {
       title: 'Get a verification page',
       description:
@@ -347,7 +343,7 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
   )
 
   server.registerTool(
-    'vmm_get_receipt',
+    'pomp_get_receipt',
     {
       title: 'Get an anchoring receipt',
       description:
@@ -361,11 +357,11 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
   )
 
   server.registerTool(
-    'vmm_export_vcon',
+    'pomp_export_vcon',
     {
       title: 'Export a workspace as a vCon',
       description:
-        'Export a workspace (head commit by default, or one commit by sequence number or hash) as an IETF vCon at owner level: parties, dialog and analysis entries for the documents, and the verifymymeeting attachments (attestations, provenance, commitment, receipts). Returns the unsigned document. With verify=true the service signature is checked against the keys at /.well-known/jwks.json and reported as verified, invalid or unverified. Pass raw=true to also get the signed JWS as served.',
+        'Export a workspace (head commit by default, or one commit by sequence number or hash) as an IETF vCon at owner level: parties, dialog and analysis entries for the documents, and the proofofmeet attachments (attestations, provenance, commitment, receipts). Returns the unsigned document. With verify=true the service signature is checked against the keys at /.well-known/jwks.json and reported as verified, invalid or unverified. Pass raw=true to also get the signed JWS as served.',
       inputSchema: {
         workspaceId: z.string().uuid(),
         commit: z
@@ -419,7 +415,7 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
   )
 
   server.registerTool(
-    'vmm_import_vcon',
+    'pomp_import_vcon',
     {
       title: 'Import a vCon or an email thread',
       description:
@@ -454,29 +450,29 @@ export function createVmmMcpServer(options: VmmMcpOptions): McpServer {
 }
 
 function errorText(error: unknown): string {
-  if (error instanceof VmmApiError) return `${error.code}: ${error.message}`
+  if (error instanceof PompApiError) return `${error.code}: ${error.message}`
   return error instanceof Error ? error.message : String(error)
 }
 
 export const toolNames = [
-  'vmm_list_workspaces',
-  'vmm_create_workspace',
-  'vmm_get_workspace',
-  'vmm_attach_record',
-  'vmm_commit_records',
-  'vmm_get_history',
-  'vmm_create_invitation',
-  'vmm_get_verification',
-  'vmm_get_receipt',
-  'vmm_export_vcon',
-  'vmm_import_vcon',
+  'pomp_list_workspaces',
+  'pomp_create_workspace',
+  'pomp_get_workspace',
+  'pomp_attach_record',
+  'pomp_commit_records',
+  'pomp_get_history',
+  'pomp_create_invitation',
+  'pomp_get_verification',
+  'pomp_get_receipt',
+  'pomp_export_vcon',
+  'pomp_import_vcon',
 ] as const
 
 export function optionsFromEnv(
   env: Record<string, string | undefined> = process.env,
-): VmmMcpOptions {
-  const baseUrl = env.VMM_BASE_URL?.trim()
+): PompMcpOptions {
+  const baseUrl = env.POMP_BASE_URL?.trim()
   if (!baseUrl)
-    throw new Error('Set VMM_BASE_URL to the ProofOfMeetProtocol origin.')
-  return { baseUrl, token: env.VMM_TOKEN?.trim() || undefined }
+    throw new Error('Set POMP_BASE_URL to the ProofOfMeetProtocol origin.')
+  return { baseUrl, token: env.POMP_TOKEN?.trim() || undefined }
 }

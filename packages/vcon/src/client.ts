@@ -5,7 +5,7 @@
  * no vCon types (this package depends on it, not the other way round), so
  * these helpers are where the typed document meets the typed client.
  */
-import type { Jwks, VmmClient } from '@verifymymeeting/sdk'
+import type { Jwks, PompClient } from '@proofofmeet/sdk'
 
 import { resolverFromJwks, unsignedFrom, verifyVcon } from './jws.js'
 import type { VerifyResult } from './jws.js'
@@ -28,7 +28,7 @@ export type ExportedVcon = {
  * in its signed form and decode the payload.
  */
 export async function exportVcon(
-  client: VmmClient,
+  client: PompClient,
   workspaceId: string,
   options: ExportVconOptions = {},
 ): Promise<ExportedVcon> {
@@ -42,7 +42,7 @@ export async function exportVcon(
 export type VerifyExportOptions = {
   /** A JWK Set already in hand, e.g. from `client.vcon.jwks()`. */
   jwks?: Jwks | { keys: Array<JsonWebKey & { kid?: string }> }
-  /** Where to fetch the JWK Set, e.g. `https://verifymymeeting.com/.well-known/jwks.json`. */
+  /** Where to fetch the JWK Set, e.g. `https://proofofmeet.com/.well-known/jwks.json`. */
   jwksUrl?: string | URL
   fetch?: (input: string | URL, init?: RequestInit) => Promise<Response>
 }
@@ -94,7 +94,7 @@ export type ImportVconInput = {
  * and documents are committed onto that workspace. Unknown `critical`
  * tokens are refused with `unsupported_extension`.
  */
-export function importVcon(client: VmmClient, input: ImportVconInput) {
+export function importVcon(client: PompClient, input: ImportVconInput) {
   return client.vcon.import({
     vcon: input.vcon,
     workspaceId: input.workspaceId,

@@ -14,7 +14,7 @@
  * keys as a JWK Set instead, so neither is emitted unless passed in
  * `header`, and verification does not require them.
  */
-import { fromBase64, toBase64Url, utf8 } from '@verifymymeeting/sdk'
+import { fromBase64, toBase64Url, utf8 } from '@proofofmeet/sdk'
 
 import type { JwsHeader, SignedVcon, Vcon } from './types.js'
 import { VCON_GZIP_MEDIATYPE, VCON_MEDIATYPE } from './types.js'

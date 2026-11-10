@@ -6,7 +6,7 @@ with a declared algorithm). Version 1.1 of 2026-11-06 added the commit
 chain, provenance and grade to version 1 of 2026-11-05; no content was
 ever committed under version 1, so there is no migration. Normative where
 it says "must". The reference
-implementation of every computation here is `@verifymymeeting/sdk`
+implementation of every computation here is `@proofofmeet/sdk`
 (`packages/sdk/src/proofs`), and `vectors/` holds the shared test vectors
 that both the server and the SDK are tested against.
 
@@ -161,7 +161,7 @@ plus the chain proves the whole package history existed by the batch time. The b
 64-byte digest to an OpenTimestamps calendar (`POST /digest`; the public
 calendars accept digests up to 64 bytes); the returned pending proof is
 stored and served as base64. ProofOfMeetProtocol also signs
-`"vmm-batch:<batchId>:<rootHex>:<leafCount>"` (message = SHA-512 of that
+`"pomp-batch:<batchId>:<rootHex>:<leafCount>"` (message = SHA-512 of that
 string) with a service Ed25519 key published at `GET /api/v1/batches`.
 
 Receipt:
@@ -199,11 +199,11 @@ server-side; handles are unlinkable across workspaces by construction.
 
 ## 11. API and MCP
 
-See `openapi.yaml`. The MCP server (`@verifymymeeting/mcp`) exposes
-`vmm_list_workspaces`, `vmm_create_workspace`, `vmm_get_workspace`,
-`vmm_attach_record`, `vmm_commit_records`, `vmm_get_history`,
-`vmm_create_invitation`, `vmm_get_verification`, `vmm_get_receipt`,
-`vmm_export_vcon`, and `vmm_import_vcon`, each a thin wrapper over the
+See `openapi.yaml`. The MCP server (`@proofofmeet/mcp`) exposes
+`pomp_list_workspaces`, `pomp_create_workspace`, `pomp_get_workspace`,
+`pomp_attach_record`, `pomp_commit_records`, `pomp_get_history`,
+`pomp_create_invitation`, `pomp_get_verification`, `pomp_get_receipt`,
+`pomp_export_vcon`, and `pomp_import_vcon`, each a thin wrapper over the
 corresponding endpoint.
 
 The vCon endpoints (sections 14 and 15):
@@ -236,10 +236,10 @@ kty: "OKP", crv: "Ed25519", x, kid, use: "sig", alg: "EdDSA" }] }`, the
 
 In the SDK these are `client.vcon.export(workspaceId, { commit?, form? })`,
 `client.vcon.exportVerification(key, { form? })`, `client.vcon.import(input)`
-and `client.vcon.jwks()`; `@verifymymeeting/vcon` adds `exportVcon`,
+and `client.vcon.jwks()`; `@proofofmeet/vcon` adds `exportVcon`,
 `verifyExport` and `importVcon` over the typed document. The MCP tool
-`vmm_export_vcon` returns the unsigned document and, with `verify: true`,
-checks the signature against the JWK Set; `vmm_import_vcon` takes a vCon
+`pomp_export_vcon` returns the unsigned document and, with `verify: true`,
+checks the signature against the JWK Set; `pomp_import_vcon` takes a vCon
 object or email text.
 
 ## 12. Commits
@@ -333,22 +333,22 @@ Order: `A` > `B` > `C` > `ungraded`. `vectors/grade.json` holds the cases.
 `suggestWitness(declaration)` is the statement the attestation page
 pre-fills; it is a convenience, not part of the rule.
 
-## 14. vCon extension `verifymymeeting`
+## 14. vCon extension `proofofmeet`
 
 ProofOfMeetProtocol exports a workspace as an IETF vCon
 (`draft-ietf-vcon-vcon-core-05`, syntax version `0.5.0`; the package
-`@verifymymeeting/vcon` pins the revision in `DRAFT_REVISION`). The vCon is
+`@proofofmeet/vcon` pins the revision in `DRAFT_REVISION`). The vCon is
 the container; this extension is the verification layer inside it. Until
 the core draft's registry exists at IANA, this section is the extension's
 specification document.
 
-- **Extension name**: `verifymymeeting`. It appears in `extensions` of
+- **Extension name**: `proofofmeet`. It appears in `extensions` of
   every vCon that uses it and never in `critical`.
 - **Parameters**: none. The extension defines no new parameters, objects,
   type tokens or encodings. Every ProofOfMeetProtocol object is an Attachment
   Object (draft section 4.6) with a `purpose` from the table below, an
   inline JSON body (`encoding: "json"`), the media type
-  `application/vnd.verifymymeeting.<kind>+json`, `start`, `party` set to
+  `application/vnd.proofofmeet.<kind>+json`, `start`, `party` set to
   the party the object belongs to, and `dialog` pointing at the document
   it is about when that document is a Dialog Object, otherwise `session`.
 - **Compatibility**: Compatible under all conditions. A reader that does
@@ -363,20 +363,20 @@ specification document.
 - **External references**: none beyond the core `url` + `content_hash`
   pairs of the documents themselves.
 
-| `purpose`                     | Body (`v: 1` unless noted)                                                                                                                                                                                                                                                   |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `verifymymeeting/attestation` | `{ id, kind, payload, payloadHashHex, signatureB64, keyId, publicKeyHex, score, supersedesId, createdAt, tombstonedAt }`: one attestation (section 6) with its signature (section 7) and score snapshot. Tombstones carry nulls.                                             |
-| `verifymymeeting/provenance`  | `{ doc, label, kind, contentVisibility, entry: { array, index } \| null, provenance, witnesses: [{ handle, witness, leaves }] }`: a document's declaration (section 13) and the witness statements of the approving participants, with where the document sits in this vCon. |
-| `verifymymeeting/commitment`  | `{ hashHex, body, leaves? }`: the commit this vCon renders (section 12), its hashed body with the tree of Merkle roots, and optionally the leaf hashes per document id.                                                                                                      |
-| `verifymymeeting/receipt`     | A receipt object as in section 9 (`v: 2`).                                                                                                                                                                                                                                   |
-| `verifymymeeting/consent`     | `{ handle, entries: [{ scope, to, at, fields? }] }`: what the participant disclosed or granted, to whom, and when.                                                                                                                                                           |
-| `verifymymeeting/identity`    | `{ handle, identifiers: [{ kind, value, verifiedBy: "cubid", verifiedAt?, status }], displayName?, affiliation? }`: Cubid-verified identifiers the participant disclosed at this level, plus self-declared labels.                                                           |
+| `purpose`                 | Body (`v: 1` unless noted)                                                                                                                                                                                                                                                   |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `proofofmeet/attestation` | `{ id, kind, payload, payloadHashHex, signatureB64, keyId, publicKeyHex, score, supersedesId, createdAt, tombstonedAt }`: one attestation (section 6) with its signature (section 7) and score snapshot. Tombstones carry nulls.                                             |
+| `proofofmeet/provenance`  | `{ doc, label, kind, contentVisibility, entry: { array, index } \| null, provenance, witnesses: [{ handle, witness, leaves }] }`: a document's declaration (section 13) and the witness statements of the approving participants, with where the document sits in this vCon. |
+| `proofofmeet/commitment`  | `{ hashHex, body, leaves? }`: the commit this vCon renders (section 12), its hashed body with the tree of Merkle roots, and optionally the leaf hashes per document id.                                                                                                      |
+| `proofofmeet/receipt`     | A receipt object as in section 9 (`v: 2`).                                                                                                                                                                                                                                   |
+| `proofofmeet/consent`     | `{ handle, entries: [{ scope, to, at, fields? }] }`: what the participant disclosed or granted, to whom, and when.                                                                                                                                                           |
+| `proofofmeet/identity`    | `{ handle, identifiers: [{ kind, value, verifiedBy: "cubid", verifiedAt?, status }], displayName?, affiliation? }`: Cubid-verified identifiers the participant disclosed at this level, plus self-declared labels.                                                           |
 
 Verification rules a ProofOfMeetProtocol-aware reader applies, each with the
 SDK function that implements it:
 
 1. The JWS signature of the signed form verifies against a key in
-   `https://verifymymeeting.com/.well-known/jwks.json` named by `kid`, and
+   `https://proofofmeet.com/.well-known/jwks.json` named by `kid`, and
    the `uuid` header equals the payload's `uuid` (`verifyVcon`).
 2. The commitment's `body` hashes to its `hashHex` (`verifyCommitHash`),
    `body.seq`, `body.parent` and `body.workspace` are consistent with the
@@ -390,30 +390,30 @@ SDK function that implements it:
 5. Every document with `url` or inline content verifies against its
    `content_hash` (`verifyContentHash`), and a `text` document's segments
    recompute the Merkle root in the commitment (`textRecordCommitment`).
-6. Parties with `validation: "verifymymeeting"` are vouched for by the
+6. Parties with `validation: "proofofmeet"` are vouched for by the
    signing domain only to the extent of their attestations: the identity
    attachment names Cubid as the verifier of each identifier, and `name`
    is a verified name only when the identity record lists a `name`
    identifier with status `verified`.
 
-## 15. vCon mapping (`vmm-vcon-mapping` 1)
+## 15. vCon mapping (`pomp-vcon-mapping` 1)
 
 The projection of one workspace commit onto a vCon, implemented by
-`toVcon`, `redactVcon` and `fromVcon` in `@verifymymeeting/vcon`. It is
+`toVcon`, `redactVcon` and `fromVcon` in `@proofofmeet/vcon`. It is
 deterministic: the same input renders byte-identical JSON. Exports state
-`VMM_MAPPING_VERSION`; a later revision of the draft or of these rules
+`POMP_MAPPING_VERSION`; a later revision of the draft or of these rules
 increments it.
 
 ### 15.1 Identity
 
 - `uuid` is a version 5 UUID (RFC 9562) of the lowercase commit hash under
-  the namespace `VMM_VCON_NAMESPACE =
-71a32ea6-9a91-57a1-865b-62e4bff8c148`, itself
-  `uuidv5(DNS namespace, "verifymymeeting.com/vcon")`. A lower level uses
+  the namespace `POMP_VCON_NAMESPACE =
+07ff0c10-f61d-519d-8e6b-b08721f96097`, itself
+  `uuidv5(DNS namespace, "proofofmeet.com/vcon")`. A lower level uses
   the name `<commit hash>:<level>`. Re-rendering a commit at a level gives
   the same uuid. (The draft recommends version 8 time-based UUIDs; that is
   a SHOULD, and stability under re-rendering matters more here.)
-- `vcon: "0.5.0"`, `extensions: ["verifymymeeting"]`, no `critical`.
+- `vcon: "0.5.0"`, `extensions: ["proofofmeet"]`, no `critical`.
 - `created_at` is the commit time; `updated_at` is the render time;
   `subject` is the workspace title.
 - One vCon per commit. At owner level, commit n > 1 carries `amended_from:
@@ -426,16 +426,16 @@ increments it.
 ### 15.2 Parties and sessions
 
 - `parties[0]` is the owner: `{ uuid: "owner", type: "person",
-validation: "verifymymeeting", name?, org? }`.
+validation: "proofofmeet", name?, org? }`.
 - One party per participant, ordered by handle: `uuid` = handle, `type` =
-  `person`, `validation` = `verifymymeeting`, `name` = the Cubid-verified
+  `person`, `validation` = `proofofmeet`, `name` = the Cubid-verified
   name when disclosed, else the self-declared display name, else
   `anonymous`; `mailto` and `tel` only from verified, disclosed
   identifiers; `org` from the disclosed affiliation. Social accounts, the
   status of each identifier and the self-declared labels go in the
   `identity` attachment. Withdrawn participants remain as `anonymous`
   parties (their attestations are tombstones).
-- The last party is the service: `{ uuid: "verifymymeeting.com", type:
+- The last party is the service: `{ uuid: "proofofmeet.com", type:
 "organization", name: "ProofOfMeetProtocol" }`, the `party` of receipts.
 - Exactly one Session Object (the draft requires one when `dialog` is
   non-empty): `start` = actual start, else scheduled start, else commit
@@ -511,7 +511,7 @@ partner needs a certificate chain, which can be added to the unprotected
 header without changing a signature. The unsigned form is available for
 reading and diffing, and the gzip form for large exports; the export
 endpoints choose by `Accept` or `?form=` (section 11). `verifyExport` in
-`@verifymymeeting/vcon` resolves the `kid` against the JWK Set and
+`@proofofmeet/vcon` resolves the `kid` against the JWK Set and
 verifies offline. No JWE.
 
 ### 15.7 Import
@@ -526,7 +526,7 @@ document becomes a plan:
 
 - `subject` → workspace title; `parties` → participant slots with the
   disclosed `name`, `org`, `mailto` and `tel`; a party with `validation:
-"verifymymeeting"` is recognized as the owner (`uuid: "owner"`), a
+"proofofmeet"` is recognized as the owner (`uuid: "owner"`), a
   participant (`uuid` = handle) or the service.
 - Each non-empty, non-`incomplete` `dialog`, each `analysis` and each
   non-extension `attachments` entry becomes a `DocumentInput`: inline

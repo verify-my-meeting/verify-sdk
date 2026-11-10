@@ -534,7 +534,7 @@ export type ListResponse<T> = { items: Array<T> }
 
 /**
  * An unsigned IETF vCon (draft-ietf-vcon-vcon-core-05) as the API serves
- * it. The SDK carries no vCon types of its own: `@verifymymeeting/vcon`
+ * it. The SDK carries no vCon types of its own: `@proofofmeet/vcon`
  * depends on this package and types, validates and verifies the document.
  */
 export type VconDocument = Record<string, unknown>

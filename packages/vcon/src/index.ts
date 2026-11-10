@@ -1,9 +1,9 @@
 /**
- * @verifymymeeting/vcon
+ * @proofofmeet/vcon
  *
  * IETF vCon (draft-ietf-vcon-vcon-core-05, syntax 0.5.0): types, builder,
  * validator, `content_hash` helpers, JWS signing and verification, the
- * `verifymymeeting` extension, and the ProofOfMeetProtocol mapping in both
+ * `proofofmeet` extension, and the ProofOfMeetProtocol mapping in both
  * directions. Browser-safe: Web Crypto only.
  */
 export const PACKAGE_VERSION = '0.1.0'
@@ -27,8 +27,8 @@ export {
   URL_NAMESPACE,
   uuidToBytes,
   uuidv5,
-  VMM_VCON_NAMESPACE,
-  vmmVconUuid,
+  POMP_VCON_NAMESPACE,
+  pompVconUuid,
 } from './uuid.js'
 export {
   addAnalysis,
@@ -91,12 +91,12 @@ export {
   readVmmPayload,
   receipts,
   usesVmmExtension,
-  VMM_EXTENSION,
-  VMM_MAPPING_VERSION,
-  vmmAttachment,
-  vmmKinds,
-  vmmMediatype,
-  vmmPurposes,
+  POMP_EXTENSION,
+  POMP_MAPPING_VERSION,
+  pompAttachment,
+  pompKinds,
+  pompMediatype,
+  pompPurposes,
 } from './extension.js'
 export type {
   AttestationRecord,
@@ -109,12 +109,12 @@ export type {
   ProvenanceRecord,
   ReceiptRecord,
   VerifiedIdentifier,
-  VmmAttachmentMatch,
-  VmmAttachmentPlacement,
-  VmmKind,
-  VmmMediatype,
-  VmmPayloadByKind,
-  VmmPurpose,
+  PompAttachmentMatch,
+  PompAttachmentPlacement,
+  PompKind,
+  PompMediatype,
+  PompPayloadByKind,
+  PompPurpose,
   WitnessStatement,
 } from './extension.js'
 export {
@@ -128,7 +128,7 @@ export {
   SERVICE_PARTY_UUID,
   toVcon,
   URI_LIST_MEDIATYPE,
-  VMM_VALIDATION,
+  POMP_VALIDATION,
 } from './mapping.js'
 export type {
   AttestationInput,
@@ -147,6 +147,6 @@ export type {
   RecordInput,
   RedactOptions,
   ToVconOptions,
-  VmmExportInput,
+  PompExportInput,
   WorkspaceInput,
 } from './mapping.js'

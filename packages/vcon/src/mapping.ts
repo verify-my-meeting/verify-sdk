@@ -1,5 +1,5 @@
 /**
- * `vmm-vcon-mapping` version 1 (protocol spec section 15): the
+ * `pomp-vcon-mapping` version 1 (protocol spec section 15): the
  * deterministic projection of one ProofOfMeetProtocol commit onto a vCon at a
  * viewer level (`toVcon`), the level redaction of an owner-level document
  * (`redactVcon`), and the import plan a vCon yields (`fromVcon`).
@@ -10,7 +10,7 @@
  * keys are written in a fixed order, and the uuid is a version 5 UUID of
  * the commit hash.
  */
-import { normalizeTree, provenanceTypes, utf8 } from '@verifymymeeting/sdk'
+import { normalizeTree, provenanceTypes, utf8 } from '@proofofmeet/sdk'
 import type {
   Attestation,
   CommitAuthor,
@@ -25,15 +25,15 @@ import type {
   ProvenanceType,
   Receipt,
   TreeEntry,
-} from '@verifymymeeting/sdk'
+} from '@proofofmeet/sdk'
 
 import {
   attestations as findAttestations,
   commitments as findCommitments,
   provenances as findProvenances,
-  VMM_EXTENSION,
-  VMM_MAPPING_VERSION,
-  vmmAttachment,
+  POMP_EXTENSION,
+  POMP_MAPPING_VERSION,
+  pompAttachment,
   isVmmAttachment,
 } from './extension.js'
 import type {
@@ -64,17 +64,17 @@ import type {
   Vcon,
 } from './types.js'
 import { VCON_VERSION } from './types.js'
-import { uuidv5, VMM_VCON_NAMESPACE, vmmVconUuid } from './uuid.js'
+import { uuidv5, POMP_VCON_NAMESPACE, pompVconUuid } from './uuid.js'
 import { assertKnownCritical } from './validate.js'
 
 export type ExportLevel = 'owner' | 'viewer' | 'link' | 'public'
 
 /** Party `uuid` of the workspace owner and of the service. */
 export const OWNER_PARTY_UUID = 'owner'
-export const SERVICE_PARTY_UUID = 'verifymymeeting.com'
+export const SERVICE_PARTY_UUID = 'proofofmeet.com'
 export const SERVICE_PARTY_NAME = 'ProofOfMeetProtocol'
 /** `validation` token on every party ProofOfMeetProtocol vouches for. */
-export const VMM_VALIDATION = 'verifymymeeting'
+export const POMP_VALIDATION = 'proofofmeet'
 /** Media type of a hash-less link document, carried inline as its URL. */
 export const URI_LIST_MEDIATYPE = 'text/uri-list'
 
@@ -160,7 +160,7 @@ export type OwnerInput = {
 }
 
 /** The data bundle `toVcon` renders. */
-export type VmmExportInput = {
+export type PompExportInput = {
   workspace: WorkspaceInput
   owner?: OwnerInput | null
   participants: Array<ParticipantInput>
@@ -183,7 +183,7 @@ export type ToVconOptions = {
   commitSeq?: number
   /** Base of the access-controlled content endpoint for `url` entries. */
   contentBaseUrl: string
-  mappingVersion: typeof VMM_MAPPING_VERSION
+  mappingVersion: typeof POMP_MAPPING_VERSION
   /** Owner level: where the previous commit's signed document is. */
   previous?: { url?: string; content_hash?: ContentHashes } | null
   /** Lower levels: where this commit's owner-level document is. */
@@ -329,7 +329,7 @@ function partyOfParticipant(participant: ParticipantInput): Party {
   const party: Party = {
     uuid: participant.handle,
     type: 'person',
-    validation: VMM_VALIDATION,
+    validation: POMP_VALIDATION,
     name: kycName?.value ?? profile?.displayName ?? 'anonymous',
   }
   const email = verified('email')
@@ -387,10 +387,10 @@ function commitBodyOf(workspaceId: string, commit: CommitInput): CommitBody {
 
 /** Render one commit of a workspace as an unsigned vCon. */
 export async function toVcon(
-  input: VmmExportInput,
+  input: PompExportInput,
   options: ToVconOptions,
 ): Promise<Vcon> {
-  if (options.mappingVersion !== VMM_MAPPING_VERSION) {
+  if (options.mappingVersion !== POMP_MAPPING_VERSION) {
     throw new MappingError(
       `Unsupported mapping version ${options.mappingVersion}.`,
     )
@@ -412,7 +412,7 @@ export async function toVcon(
   const ownerParty: Party = omitUndefined({
     uuid: OWNER_PARTY_UUID,
     type: 'person',
-    validation: VMM_VALIDATION,
+    validation: POMP_VALIDATION,
     name: input.owner?.name ?? undefined,
     org: input.owner?.org ?? undefined,
   })
@@ -607,7 +607,7 @@ export async function toVcon(
       witnesses: witnessesOf(entry.doc),
     }
     attachments.push(
-      vmmAttachment('provenance', payload, {
+      pompAttachment('provenance', payload, {
         start: commit.committedAt,
         party,
         ...(locator.array === 'dialog'
@@ -631,7 +631,7 @@ export async function toVcon(
     if (Object.keys(leaves).length > 0) commitment.leaves = leaves
   }
   attachments.push(
-    vmmAttachment('commitment', commitment, {
+    pompAttachment('commitment', commitment, {
       start: commit.committedAt,
       party: authorParty(commit.author),
       session: 0,
@@ -660,7 +660,7 @@ export async function toVcon(
       tombstonedAt: attestation.tombstonedAt,
     }
     attachments.push(
-      vmmAttachment('attestation', payload, {
+      pompAttachment('attestation', payload, {
         start: attestation.createdAt,
         party,
         session: 0,
@@ -676,7 +676,7 @@ export async function toVcon(
   )
   for (const receipt of receipts) {
     attachments.push(
-      vmmAttachment('receipt', receipt, {
+      pompAttachment('receipt', receipt, {
         start: receipt.ledger.submittedAt ?? input.renderedAt,
         party: serviceIndex,
         session: 0,
@@ -704,7 +704,7 @@ export async function toVcon(
         (p) => p.id === consent.participantId,
       ) as ParticipantInput
       attachments.push(
-        vmmAttachment(
+        pompAttachment(
           'consent',
           { v: 1, handle: participant.handle, entries: entriesSorted },
           {
@@ -721,7 +721,7 @@ export async function toVcon(
     const identity = identityOf(participant)
     if (!identity) continue
     attachments.push(
-      vmmAttachment('identity', identity, {
+      pompAttachment('identity', identity, {
         start: participant.joinedAt,
         party: partyOf.get(participant.id) as number,
         session: 0,
@@ -731,8 +731,8 @@ export async function toVcon(
 
   const vcon: Vcon = {
     vcon: VCON_VERSION,
-    uuid: await vmmVconUuid(commit.hashHex, level),
-    extensions: [VMM_EXTENSION],
+    uuid: await pompVconUuid(commit.hashHex, level),
+    extensions: [POMP_EXTENSION],
     created_at: commit.committedAt,
     updated_at: input.renderedAt,
     subject: workspace.title,
@@ -741,13 +741,13 @@ export async function toVcon(
     // Lower levels are redactions of the owner-level document (spec 15),
     // which in turn carries the amendment chain.
     vcon.redacted_from = redactedFromOwner(
-      await vmmVconUuid(commit.hashHex, 'owner'),
+      await pompVconUuid(commit.hashHex, 'owner'),
       level,
       options.source,
     )
   } else if (commit.parentHashHex) {
     const amended: NonNullable<Vcon['amended_from']> = {
-      uuid: await vmmVconUuid(commit.parentHashHex, 'owner'),
+      uuid: await pompVconUuid(commit.parentHashHex, 'owner'),
     }
     if (options.previous?.url) amended.url = options.previous.url
     if (options.previous?.content_hash) {
@@ -786,7 +786,7 @@ export type RedactOptions = {
 
 function isParticipantParty(party: Party): boolean {
   return (
-    party.validation === VMM_VALIDATION &&
+    party.validation === POMP_VALIDATION &&
     party.type === 'person' &&
     party.uuid !== OWNER_PARTY_UUID
   )
@@ -809,8 +809,8 @@ export async function redactVcon(
   const out = JSON.parse(JSON.stringify(owner)) as Vcon
   const commitment = findCommitments(owner)[0]?.payload
   out.uuid = commitment
-    ? await vmmVconUuid(commitment.hashHex, level)
-    : await uuidv5(VMM_VCON_NAMESPACE, `${owner.uuid}:${level}`)
+    ? await pompVconUuid(commitment.hashHex, level)
+    : await uuidv5(POMP_VCON_NAMESPACE, `${owner.uuid}:${level}`)
   delete out.amended_from
   const redactedFrom = redactedFromOwner(owner.uuid, level, options.source)
   // Key order: references come right after subject, as toVcon writes them.
@@ -872,8 +872,8 @@ export async function redactVcon(
     ordered.attachments = (ordered.attachments ?? []).filter(
       (item) =>
         !isVmmAttachment(item) ||
-        (item.purpose !== 'verifymymeeting/identity' &&
-          item.purpose !== 'verifymymeeting/consent'),
+        (item.purpose !== 'proofofmeet/identity' &&
+          item.purpose !== 'proofofmeet/consent'),
     )
     for (const { payload } of findCommitments(ordered)) delete payload.leaves
     for (const [index, party] of (ordered.parties ?? []).entries()) {
@@ -888,7 +888,7 @@ export async function redactVcon(
       })
       if (!identity) continue
       ordered.attachments.push(
-        vmmAttachment('identity', identity, {
+        pompAttachment('identity', identity, {
           start: owner.created_at,
           party: index,
           session: 0,
@@ -923,8 +923,8 @@ export type ImportPlan = {
   uuid: string
   title: string | null
   createdAt: string
-  /** Set when the vCon declares the `verifymymeeting` extension. */
-  vmm: { commitHashHex: string | null; attestations: number } | null
+  /** Set when the vCon declares the `proofofmeet` extension. */
+  pomp: { commitHashHex: string | null; attestations: number } | null
   parties: Array<ImportParty>
   documents: Array<ImportDocument>
   /** Carried into the stored document unchanged, never interpreted. */
@@ -943,7 +943,7 @@ export type FromVconOptions = {
 
 function roleOf(party: Party): PartyRole {
   if (party.uuid === SERVICE_PARTY_UUID) return 'service'
-  if (party.validation !== VMM_VALIDATION) return 'unknown'
+  if (party.validation !== POMP_VALIDATION) return 'unknown'
   return party.uuid === OWNER_PARTY_UUID ? 'owner' : 'participant'
 }
 
@@ -1078,7 +1078,7 @@ export async function fromVcon(
   vcon: Vcon,
   options: FromVconOptions = {},
 ): Promise<ImportPlan> {
-  assertKnownCritical(vcon, options.known ?? [VMM_EXTENSION])
+  assertKnownCritical(vcon, options.known ?? [POMP_EXTENSION])
   const parties: Array<ImportParty> = (vcon.parties ?? []).map(
     (party, index) => {
       const role = roleOf(party)
@@ -1094,7 +1094,7 @@ export async function fromVcon(
     },
   )
   const roleAt = (index: number): PartyRole => parties[index]?.role ?? 'unknown'
-  const isVmm = (vcon.extensions ?? []).includes(VMM_EXTENSION)
+  const isVmm = (vcon.extensions ?? []).includes(POMP_EXTENSION)
   const declared = new Map<string, ProvenanceRecord>()
   if (isVmm) {
     for (const { payload } of findProvenances(vcon)) {
@@ -1193,7 +1193,7 @@ export async function fromVcon(
     uuid: vcon.uuid,
     title: vcon.subject ?? null,
     createdAt: vcon.created_at,
-    vmm: isVmm
+    pomp: isVmm
       ? {
           commitHashHex: commitment?.hashHex ?? null,
           attestations: findAttestations(vcon).length,

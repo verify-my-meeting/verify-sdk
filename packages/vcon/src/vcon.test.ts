@@ -25,7 +25,7 @@ import {
   DNS_NAMESPACE,
   uuidToBytes,
   uuidv5,
-  VMM_VCON_NAMESPACE,
+  POMP_VCON_NAMESPACE,
 } from './uuid'
 import {
   assertKnownCritical,
@@ -126,12 +126,12 @@ describe('validateVcon', () => {
   })
 
   it('rejects unknown critical tokens and accepts known ones', () => {
-    const vcon = { critical: ['verifymymeeting', 'other'] }
-    expect(() => assertKnownCritical(vcon, ['verifymymeeting'])).toThrow(
+    const vcon = { critical: ['proofofmeet', 'other'] }
+    expect(() => assertKnownCritical(vcon, ['proofofmeet'])).toThrow(
       UnknownCriticalExtensionError,
     )
     expect(() =>
-      assertKnownCritical(vcon, ['verifymymeeting', 'other']),
+      assertKnownCritical(vcon, ['proofofmeet', 'other']),
     ).not.toThrow()
     expect(() => assertKnownCritical({}, [])).not.toThrow()
   })
@@ -200,11 +200,11 @@ describe('uuidv5', () => {
   })
 
   it('derives the ProofOfMeetProtocol namespace from the DNS namespace', async () => {
-    expect(await uuidv5(DNS_NAMESPACE, 'verifymymeeting.com/vcon')).toBe(
-      VMM_VCON_NAMESPACE,
+    expect(await uuidv5(DNS_NAMESPACE, 'proofofmeet.com/vcon')).toBe(
+      POMP_VCON_NAMESPACE,
     )
-    expect(nodeUuidv5(DNS_NAMESPACE, 'verifymymeeting.com/vcon')).toBe(
-      VMM_VCON_NAMESPACE,
+    expect(nodeUuidv5(DNS_NAMESPACE, 'proofofmeet.com/vcon')).toBe(
+      POMP_VCON_NAMESPACE,
     )
   })
 
@@ -217,10 +217,10 @@ describe('uuidv5', () => {
 describe('builder', () => {
   it('builds a valid vCon with inline text and an attachment', async () => {
     const vcon = createVcon({
-      uuid: await uuidv5(VMM_VCON_NAMESPACE, 'builder-test'),
+      uuid: await uuidv5(POMP_VCON_NAMESPACE, 'builder-test'),
       created_at: '2026-11-07T10:00:00Z',
       subject: 'Builder',
-      extensions: ['verifymymeeting'],
+      extensions: ['proofofmeet'],
     })
     const alice = addParty(vcon, { name: 'Alice', uuid: 'Person #1001' })
     const bob = addParty(vcon, { name: 'Bob', uuid: 'Person #1002' })

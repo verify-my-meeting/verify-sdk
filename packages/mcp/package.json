@@ -1,5 +1,5 @@
 {
-  "name": "@verifymymeeting/mcp",
+  "name": "@proofofmeet/mcp",
   "version": "0.3.0",
   "description": "MCP server for ProofOfMeetProtocol workspaces, records, invitations, verification, and vCon export and import",
   "license": "Apache-2.0",
@@ -24,7 +24,7 @@
   },
   "sideEffects": false,
   "bin": {
-    "verifymymeeting-mcp": "./dist/bin.js"
+    "proofofmeet-mcp": "./dist/bin.js"
   },
   "exports": {
     ".": {
@@ -34,8 +34,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "@verifymymeeting/sdk": "workspace:*",
-    "@verifymymeeting/vcon": "workspace:*",
+    "@proofofmeet/sdk": "workspace:*",
+    "@proofofmeet/vcon": "workspace:*",
     "zod": "^4.6.7"
   },
   "engines": {

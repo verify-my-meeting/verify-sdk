@@ -1,25 +1,25 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
-import { createClient } from '@verifymymeeting/sdk'
+import { createClient } from '@proofofmeet/sdk'
 import {
   addParty,
   addSession,
   createVcon,
   jwkFromRawEd25519,
   signVcon,
-} from '@verifymymeeting/vcon'
+} from '@proofofmeet/vcon'
 import { describe, expect, it } from 'vitest'
 
 import { createVmmMcpServer, optionsFromEnv, toolNames } from './index.js'
 
 async function connected(handler: (url: URL, init: RequestInit) => Response) {
   const client = createClient({
-    baseUrl: 'https://vmm.example',
-    token: 'vmm_sk_test',
+    baseUrl: 'https://pomp.example',
+    token: 'pomp_sk_test',
     fetch: async (input: string | URL, init: RequestInit = {}) =>
       handler(new URL(String(input)), init),
   })
-  const server = createVmmMcpServer({ baseUrl: 'https://vmm.example', client })
+  const server = createVmmMcpServer({ baseUrl: 'https://pomp.example', client })
   const [clientTransport, serverTransport] =
     InMemoryTransport.createLinkedPair()
   await server.connect(serverTransport)
@@ -34,7 +34,8 @@ describe('createVmmMcpServer', () => {
     const { tools } = await mcp.listTools()
     expect(tools.map((t) => t.name).sort()).toEqual([...toolNames].sort())
     expect(
-      tools.find((t) => t.name === 'vmm_attach_record')?.inputSchema.properties,
+      tools.find((t) => t.name === 'pomp_attach_record')?.inputSchema
+        .properties,
     ).toHaveProperty('text')
   })
 
@@ -47,7 +48,7 @@ describe('createVmmMcpServer', () => {
       )
     })
     const result = await mcp.callTool({
-      name: 'vmm_create_workspace',
+      name: 'pomp_create_workspace',
       arguments: { title: 'Interview' },
     })
     expect(seen).toEqual(['POST /api/v1/workspaces'])
@@ -66,7 +67,7 @@ describe('createVmmMcpServer', () => {
         ),
     )
     const result = await mcp.callTool({
-      name: 'vmm_get_verification',
+      name: 'pomp_get_verification',
       arguments: { key: 'missing' },
     })
     expect(result.isError).toBe(true)
@@ -76,7 +77,7 @@ describe('createVmmMcpServer', () => {
   it('reads configuration from the environment', () => {
     expect(() => optionsFromEnv({})).toThrow()
     expect(
-      optionsFromEnv({ VMM_BASE_URL: 'https://x', VMM_TOKEN: '' }),
+      optionsFromEnv({ POMP_BASE_URL: 'https://x', POMP_TOKEN: '' }),
     ).toEqual({
       baseUrl: 'https://x',
       token: undefined,
@@ -92,7 +93,7 @@ describe('createVmmMcpServer', () => {
       await crypto.subtle.exportKey('raw', pair.publicKey),
     )
     const vcon = createVcon({
-      uuid: '71a32ea6-9a91-57a1-865b-62e4bff8c148',
+      uuid: '07ff0c10-f61d-519d-8e6b-b08721f96097',
       created_at: '2026-11-07T10:00:00Z',
       subject: 'Interview 7',
     })
@@ -100,7 +101,7 @@ describe('createVmmMcpServer', () => {
     addSession(vcon, { parties: [0] })
     const signed = await signVcon(vcon, {
       privateKey: pair.privateKey,
-      kid: 'vmm-1',
+      kid: 'pomp-1',
     })
     const seen: Array<string> = []
     const mcp = await connected((url, init) => {
@@ -109,7 +110,7 @@ describe('createVmmMcpServer', () => {
       )
       if (url.pathname === '/.well-known/jwks.json') {
         return new Response(
-          JSON.stringify({ keys: [jwkFromRawEd25519(raw, 'vmm-1')] }),
+          JSON.stringify({ keys: [jwkFromRawEd25519(raw, 'pomp-1')] }),
         )
       }
       return new Response(JSON.stringify(signed), {
@@ -118,7 +119,7 @@ describe('createVmmMcpServer', () => {
     })
     const workspaceId = 'c0000000-0000-4000-8000-000000000003'
     const plain = await mcp.callTool({
-      name: 'vmm_export_vcon',
+      name: 'pomp_export_vcon',
       arguments: { workspaceId },
     })
     expect(plain.isError).toBeFalsy()
@@ -128,12 +129,12 @@ describe('createVmmMcpServer', () => {
     expect(plainContent).not.toHaveProperty('raw')
 
     const verified = await mcp.callTool({
-      name: 'vmm_export_vcon',
+      name: 'pomp_export_vcon',
       arguments: { workspaceId, commit: 2, verify: true, raw: true },
     })
     const content = verified.structuredContent as Record<string, unknown>
     expect(content.signature).toBe('verified')
-    expect(content.kid).toBe('vmm-1')
+    expect(content.kid).toBe('pomp-1')
     expect(content.raw).toEqual(signed)
     expect(seen).toEqual([
       `GET /api/v1/workspaces/${workspaceId}/vcon application/jose+json`,
@@ -148,7 +149,7 @@ describe('createVmmMcpServer', () => {
         : new Response(JSON.stringify(signed)),
     )
     const invalid = await other.callTool({
-      name: 'vmm_export_vcon',
+      name: 'pomp_export_vcon',
       arguments: { workspaceId, verify: true },
     })
     expect(
@@ -173,7 +174,7 @@ describe('createVmmMcpServer', () => {
       )
     })
     const fromVcon = await mcp.callTool({
-      name: 'vmm_import_vcon',
+      name: 'pomp_import_vcon',
       arguments: { vcon: { vcon: '0.5.0', uuid: 'u', subject: 'Thread' } },
     })
     expect(fromVcon.isError).toBeFalsy()
@@ -182,7 +183,7 @@ describe('createVmmMcpServer', () => {
         .parties,
     ).toBe(1)
     const fromEmail = await mcp.callTool({
-      name: 'vmm_import_vcon',
+      name: 'pomp_import_vcon',
       arguments: {
         email: 'From: a@example.com\r\nSubject: Hi\r\n\r\nHello',
         mbox: true,
@@ -204,7 +205,7 @@ describe('createVmmMcpServer', () => {
       },
     ])
     const neither = await mcp.callTool({
-      name: 'vmm_import_vcon',
+      name: 'pomp_import_vcon',
       arguments: {},
     })
     expect(neither.isError).toBe(true)

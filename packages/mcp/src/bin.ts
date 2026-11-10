@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * `verifymymeeting-mcp`: run the MCP server over stdio.
+ * `proofofmeet-mcp`: run the MCP server over stdio.
  *
- *   VMM_BASE_URL=https://verifymymeeting.com VMM_TOKEN=vmm_sk_... verifymymeeting-mcp
+ *   POMP_BASE_URL=https://proofofmeet.com POMP_TOKEN=pomp_sk_... proofofmeet-mcp
  */
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 

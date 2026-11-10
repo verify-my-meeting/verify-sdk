@@ -7,17 +7,17 @@
  * domain (section 4.1.2, a SHOULD). ProofOfMeetProtocol uses version 5 over the
  * commit hash instead so that re-rendering a commit yields the same uuid.
  */
-import { toHex, utf8 } from '@verifymymeeting/sdk'
+import { toHex, utf8 } from '@proofofmeet/sdk'
 
 /** RFC 9562 appendix: the DNS namespace. */
 export const DNS_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'
 export const URL_NAMESPACE = '6ba7b811-9dad-11d1-80b4-00c04fd430c8'
 
 /**
- * `uuidv5(DNS_NAMESPACE, 'verifymymeeting.com/vcon')`: the namespace under
+ * `uuidv5(DNS_NAMESPACE, 'proofofmeet.com/vcon')`: the namespace under
  * which ProofOfMeetProtocol derives every vCon uuid (spec section 15).
  */
-export const VMM_VCON_NAMESPACE = '71a32ea6-9a91-57a1-865b-62e4bff8c148'
+export const POMP_VCON_NAMESPACE = '07ff0c10-f61d-519d-8e6b-b08721f96097'
 
 const uuidSyntax =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu
@@ -61,7 +61,7 @@ export async function uuidv5(
 }
 
 /** The uuid ProofOfMeetProtocol gives the vCon of one commit at one level. */
-export function vmmVconUuid(
+export function pompVconUuid(
   commitHashHex: string,
   level: 'owner' | 'viewer' | 'link' | 'public' = 'owner',
 ): Promise<string> {
@@ -69,5 +69,5 @@ export function vmmVconUuid(
     level === 'owner'
       ? commitHashHex.toLowerCase()
       : `${commitHashHex.toLowerCase()}:${level}`
-  return uuidv5(VMM_VCON_NAMESPACE, name)
+  return uuidv5(POMP_VCON_NAMESPACE, name)
 }

@@ -1,9 +1,9 @@
 /**
- * The `verifymymeeting` vCon extension (protocol spec section 14): a
+ * The `proofofmeet` vCon extension (protocol spec section 14): a
  * Compatible extension that adds no parameters. Every ProofOfMeetProtocol
  * object travels as an Attachment Object with a `purpose` from the fixed
  * set below, an inline JSON body (`encoding: "json"`), and a media type
- * `application/vnd.verifymymeeting.<kind>+json`. A reader that does not
+ * `application/vnd.proofofmeet.<kind>+json`. A reader that does not
  * know the extension sees ordinary attachments and a valid conversation;
  * the token is listed in `extensions`, never in `critical`.
  */
@@ -18,16 +18,16 @@ import type {
   Receipt,
   ScoreSnapshot,
   Witness,
-} from '@verifymymeeting/sdk'
+} from '@proofofmeet/sdk'
 
 import type { Attachment, DateString, Vcon } from './types.js'
 
-export const VMM_EXTENSION = 'verifymymeeting'
+export const POMP_EXTENSION = 'proofofmeet'
 
 /** Version of the mapping (spec section 15) an export was rendered with. */
-export const VMM_MAPPING_VERSION = 1 as const
+export const POMP_MAPPING_VERSION = 1 as const
 
-export const vmmKinds = [
+export const pompKinds = [
   'attestation',
   'provenance',
   'commitment',
@@ -35,22 +35,22 @@ export const vmmKinds = [
   'consent',
   'identity',
 ] as const
-export type VmmKind = (typeof vmmKinds)[number]
+export type PompKind = (typeof pompKinds)[number]
 
-export type VmmPurpose = `verifymymeeting/${VmmKind}`
-export type VmmMediatype = `application/vnd.verifymymeeting.${VmmKind}+json`
+export type PompPurpose = `proofofmeet/${PompKind}`
+export type PompMediatype = `application/vnd.proofofmeet.${PompKind}+json`
 
-export const vmmPurposes: Record<VmmKind, VmmPurpose> = {
-  attestation: 'verifymymeeting/attestation',
-  provenance: 'verifymymeeting/provenance',
-  commitment: 'verifymymeeting/commitment',
-  receipt: 'verifymymeeting/receipt',
-  consent: 'verifymymeeting/consent',
-  identity: 'verifymymeeting/identity',
+export const pompPurposes: Record<PompKind, PompPurpose> = {
+  attestation: 'proofofmeet/attestation',
+  provenance: 'proofofmeet/provenance',
+  commitment: 'proofofmeet/commitment',
+  receipt: 'proofofmeet/receipt',
+  consent: 'proofofmeet/consent',
+  identity: 'proofofmeet/identity',
 }
 
-export function vmmMediatype(kind: VmmKind): VmmMediatype {
-  return `application/vnd.verifymymeeting.${kind}+json`
+export function pompMediatype(kind: PompKind): PompMediatype {
+  return `application/vnd.proofofmeet.${kind}+json`
 }
 
 /** Where a POMP document landed in the vCon. */
@@ -59,7 +59,7 @@ export type EntryLocator = {
   index: number
 }
 
-/** `verifymymeeting/attestation`: one signed attestation (spec section 6). */
+/** `proofofmeet/attestation`: one signed attestation (spec section 6). */
 export type AttestationRecord = {
   v: 1
   id: string
@@ -83,7 +83,7 @@ export type WitnessStatement = {
   leaves: LeafSet
 }
 
-/** `verifymymeeting/provenance`: a document's declaration and statements. */
+/** `proofofmeet/provenance`: a document's declaration and statements. */
 export type ProvenanceRecord = {
   v: 1
   /** POMP document id (stable across versions). */
@@ -98,7 +98,7 @@ export type ProvenanceRecord = {
 }
 
 /**
- * `verifymymeeting/commitment`: the commit this vCon renders (spec
+ * `proofofmeet/commitment`: the commit this vCon renders (spec
  * section 12) with its tree of Merkle roots, and optionally the leaf
  * hashes per document so a reader can check segments.
  */
@@ -109,7 +109,7 @@ export type CommitmentRecord = {
   leaves?: Record<string, Array<string>>
 }
 
-/** `verifymymeeting/receipt`: an anchoring receipt (spec section 9). */
+/** `proofofmeet/receipt`: an anchoring receipt (spec section 9). */
 export type ReceiptRecord = Receipt
 
 export type ConsentEntry = {
@@ -122,7 +122,7 @@ export type ConsentEntry = {
   fields?: Array<string>
 }
 
-/** `verifymymeeting/consent`: what a participant disclosed, when, to whom. */
+/** `proofofmeet/consent`: what a participant disclosed, when, to whom. */
 export type ConsentRecord = {
   v: 1
   handle: string
@@ -141,7 +141,7 @@ export type VerifiedIdentifier = {
 }
 
 /**
- * `verifymymeeting/identity`: the identifiers a participant disclosed at
+ * `proofofmeet/identity`: the identifiers a participant disclosed at
  * this level, each verified by Cubid, plus any self-declared labels.
  */
 export type IdentityRecord = {
@@ -153,7 +153,7 @@ export type IdentityRecord = {
   affiliation?: string
 }
 
-export type VmmPayloadByKind = {
+export type PompPayloadByKind = {
   attestation: AttestationRecord
   provenance: ProvenanceRecord
   commitment: CommitmentRecord
@@ -162,25 +162,25 @@ export type VmmPayloadByKind = {
   identity: IdentityRecord
 }
 
-export function isVmmPurpose(value: unknown): value is VmmPurpose {
+export function isVmmPurpose(value: unknown): value is PompPurpose {
   return (
     typeof value === 'string' &&
-    (Object.values(vmmPurposes) as Array<string>).includes(value)
+    (Object.values(pompPurposes) as Array<string>).includes(value)
   )
 }
 
-export function kindOfPurpose(purpose: VmmPurpose): VmmKind {
-  return purpose.slice('verifymymeeting/'.length) as VmmKind
+export function kindOfPurpose(purpose: PompPurpose): PompKind {
+  return purpose.slice('proofofmeet/'.length) as PompKind
 }
 
 /** True when the attachment carries a ProofOfMeetProtocol object. */
 export function isVmmAttachment(
   attachment: Attachment,
-): attachment is Attachment & { purpose: VmmPurpose } {
+): attachment is Attachment & { purpose: PompPurpose } {
   return isVmmPurpose(attachment.purpose)
 }
 
-export type VmmAttachmentPlacement = {
+export type PompAttachmentPlacement = {
   start: DateString
   party: number
   dialog?: number
@@ -188,16 +188,16 @@ export type VmmAttachmentPlacement = {
 }
 
 /** Build the attachment for one POMP object. */
-export function vmmAttachment<K extends VmmKind>(
+export function pompAttachment<K extends PompKind>(
   kind: K,
-  payload: VmmPayloadByKind[K],
-  placement: VmmAttachmentPlacement,
-): Attachment & { purpose: VmmPurpose } {
-  const attachment: Attachment & { purpose: VmmPurpose } = {
-    purpose: vmmPurposes[kind],
+  payload: PompPayloadByKind[K],
+  placement: PompAttachmentPlacement,
+): Attachment & { purpose: PompPurpose } {
+  const attachment: Attachment & { purpose: PompPurpose } = {
+    purpose: pompPurposes[kind],
     start: placement.start,
     party: placement.party,
-    mediatype: vmmMediatype(kind),
+    mediatype: pompMediatype(kind),
     encoding: 'json',
     body: payload,
   }
@@ -206,26 +206,26 @@ export function vmmAttachment<K extends VmmKind>(
   return attachment
 }
 
-export type VmmAttachmentMatch<K extends VmmKind> = {
+export type PompAttachmentMatch<K extends PompKind> = {
   index: number
-  attachment: Attachment & { purpose: VmmPurpose }
-  payload: VmmPayloadByKind[K]
+  attachment: Attachment & { purpose: PompPurpose }
+  payload: PompPayloadByKind[K]
 }
 
 /** The inline JSON payload of a POMP attachment, or null when malformed. */
-export function readVmmPayload<K extends VmmKind>(
+export function readVmmPayload<K extends PompKind>(
   attachment: Attachment,
   kind: K,
-): VmmPayloadByKind[K] | null {
-  if (attachment.purpose !== vmmPurposes[kind]) return null
+): PompPayloadByKind[K] | null {
+  if (attachment.purpose !== pompPurposes[kind]) return null
   if (attachment.encoding === 'json') {
     return attachment.body && typeof attachment.body === 'object'
-      ? (attachment.body as VmmPayloadByKind[K])
+      ? (attachment.body as PompPayloadByKind[K])
       : null
   }
   if (attachment.encoding === 'none' && typeof attachment.body === 'string') {
     try {
-      return JSON.parse(attachment.body) as VmmPayloadByKind[K]
+      return JSON.parse(attachment.body) as PompPayloadByKind[K]
     } catch {
       return null
     }
@@ -234,11 +234,11 @@ export function readVmmPayload<K extends VmmKind>(
 }
 
 /** Every attachment of one POMP kind, in array order, with its payload. */
-export function findVmmAttachments<K extends VmmKind>(
+export function findVmmAttachments<K extends PompKind>(
   vcon: Pick<Vcon, 'attachments'>,
   kind: K,
-): Array<VmmAttachmentMatch<K>> {
-  const out: Array<VmmAttachmentMatch<K>> = []
+): Array<PompAttachmentMatch<K>> {
+  const out: Array<PompAttachmentMatch<K>> = []
   for (const [index, attachment] of (vcon.attachments ?? []).entries()) {
     if (!isVmmAttachment(attachment)) continue
     const payload = readVmmPayload(attachment, kind)
@@ -262,5 +262,5 @@ export const identities = (vcon: Pick<Vcon, 'attachments'>) =>
 
 /** True when the vCon declares the extension in `extensions`. */
 export function usesVmmExtension(vcon: Pick<Vcon, 'extensions'>): boolean {
-  return (vcon.extensions ?? []).includes(VMM_EXTENSION)
+  return (vcon.extensions ?? []).includes(POMP_EXTENSION)
 }

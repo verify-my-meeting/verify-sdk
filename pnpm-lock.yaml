@@ -26,10 +26,10 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.32.2
         version: 1.32.2(zod@4.6.7)
-      '@verifymymeeting/sdk':
+      '@proofofmeet/sdk':
         specifier: workspace:*
         version: link:../sdk
-      '@verifymymeeting/vcon':
+      '@proofofmeet/vcon':
         specifier: workspace:*
         version: link:../vcon
       zod:
@@ -66,7 +66,7 @@ importers:
 
   packages/vcon:
     dependencies:
-      '@verifymymeeting/sdk':
+      '@proofofmeet/sdk':
         specifier: workspace:*
         version: link:../sdk
     devDependencies:

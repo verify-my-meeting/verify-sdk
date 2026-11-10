@@ -1,13 +1,13 @@
 /**
  * Typed client for the ProofOfMeetProtocol REST API (`/api/v1`).
  *
- * Authenticate with an integrator API key (`vmm_sk_...`) to act as the
- * integrator, or with a consent token (`vmm_ct_...`) to act on behalf of an
+ * Authenticate with an integrator API key (`pomp_sk_...`) to act as the
+ * integrator, or with a consent token (`pomp_ct_...`) to act on behalf of an
  * owner who approved the integrator. Attestation itself is never available
  * through this client: participants attest only in ProofOfMeetProtocol under
  * their own session.
  */
-import { VmmApiError } from './errors.js'
+import { PompApiError } from './errors.js'
 import { sha256, toBase64Url, utf8 } from './proofs/bytes.js'
 import type {
   Attestation,
@@ -53,9 +53,9 @@ export type FetchLike = (
 ) => Promise<Response>
 
 export type ClientOptions = {
-  /** Origin of the ProofOfMeetProtocol deployment, e.g. `https://verifymymeeting.com`. */
+  /** Origin of the ProofOfMeetProtocol deployment, e.g. `https://proofofmeet.com`. */
   baseUrl: string | URL
-  /** `vmm_sk_...` or `vmm_ct_...`. Omit for public reads. */
+  /** `pomp_sk_...` or `pomp_ct_...`. Omit for public reads. */
   token?: string
   fetch?: FetchLike
   /** Extra headers, e.g. a user agent for your integration. */
@@ -68,7 +68,7 @@ export type RateLimitInfo = {
   resetSeconds: number | null
 }
 
-export type VmmClient = ReturnType<typeof createClient>
+export type PompClient = ReturnType<typeof createClient>
 
 export function createClient(options: ClientOptions) {
   const base = new URL(String(options.baseUrl))
@@ -124,7 +124,7 @@ export function createClient(options: ClientOptions) {
       remaining: numberHeader(response, 'ratelimit-remaining'),
       resetSeconds: numberHeader(response, 'ratelimit-reset'),
     }
-    if (!response.ok) throw await VmmApiError.fromResponse(response)
+    if (!response.ok) throw await PompApiError.fromResponse(response)
     return response
   }
 
@@ -288,7 +288,7 @@ export function createClient(options: ClientOptions) {
   }
 
   const oauth = {
-    /** Exchange an authorization code for a consent token (`vmm_ct_...`). */
+    /** Exchange an authorization code for a consent token (`pomp_ct_...`). */
     exchangeCode: (input: {
       code: string
       codeVerifier: string
@@ -334,7 +334,7 @@ export function createClient(options: ClientOptions) {
      * JSON Serialization, the default), unsigned, or gzip of the signed
      * JSON as bytes. `commit` selects a version by sequence number or hash;
      * the head is the default. Verify and read the signed form with
-     * `@verifymymeeting/vcon` (`verifyVcon`, `unsignedFrom`).
+     * `@proofofmeet/vcon` (`verifyVcon`, `unsignedFrom`).
      */
     export: <F extends VconForm = 'signed'>(
       workspaceId: string,

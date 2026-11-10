@@ -1,5 +1,5 @@
 /**
- * @verifymymeeting/sdk
+ * @proofofmeet/sdk
  *
  * Typed client for the ProofOfMeetProtocol REST API, protocol types, and
  * browser-safe proof verification (RFC 8785 canonicalization, RFC 6962
@@ -17,8 +17,8 @@ export type {
   ClientOptions,
   FetchLike,
   RateLimitInfo,
-  VmmClient,
+  PompClient,
 } from './client.js'
-export { VmmApiError } from './errors.js'
+export { PompApiError } from './errors.js'
 export * from './types.js'
 export * from './proofs/index.js'

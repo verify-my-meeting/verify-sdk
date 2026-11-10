@@ -1,5 +1,5 @@
 /**
- * @verifymymeeting/react
+ * @proofofmeet/react
  *
  * Embeddable sign-up and attestation component. Pre-release scaffold.
  */

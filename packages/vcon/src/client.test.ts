@@ -1,4 +1,4 @@
-import type { VmmClient } from '@verifymymeeting/sdk'
+import type { PompClient } from '@proofofmeet/sdk'
 import { describe, expect, it } from 'vitest'
 
 import { addParty, addSession, createVcon } from './build'
@@ -8,7 +8,7 @@ import type { SignedVcon, Vcon } from './types'
 
 function sample(): Vcon {
   const vcon = createVcon({
-    uuid: '71a32ea6-9a91-57a1-865b-62e4bff8c148',
+    uuid: '07ff0c10-f61d-519d-8e6b-b08721f96097',
     created_at: '2026-11-07T10:00:00Z',
     subject: 'Export',
   })
@@ -28,9 +28,9 @@ async function signedSample() {
   const vcon = sample()
   const signed = await signVcon(vcon, {
     privateKey: pair.privateKey,
-    kid: 'vmm-1',
+    kid: 'pomp-1',
   })
-  return { vcon, signed, jwks: { keys: [jwkFromRawEd25519(raw, 'vmm-1')] } }
+  return { vcon, signed, jwks: { keys: [jwkFromRawEd25519(raw, 'pomp-1')] } }
 }
 
 type Call = { method: string; args: Array<unknown> }
@@ -60,7 +60,7 @@ function fakeClient(responses: {
         return responses.jwks
       },
     },
-  } as unknown as VmmClient
+  } as unknown as PompClient
   return { calls, client }
 }
 
@@ -81,7 +81,7 @@ describe('verifyExport', () => {
   it('verifies with a JWK Set in hand', async () => {
     const { vcon, signed, jwks } = await signedSample()
     const result = await verifyExport(signed, { jwks })
-    expect(result).toMatchObject({ ok: true, kid: 'vmm-1', alg: 'EdDSA' })
+    expect(result).toMatchObject({ ok: true, kid: 'pomp-1', alg: 'EdDSA' })
     if (result.ok) expect(result.vcon).toEqual(vcon)
   })
 
@@ -95,14 +95,14 @@ describe('verifyExport', () => {
       })
     }
     const result = await verifyExport(signed, {
-      jwksUrl: 'https://vmm.example/.well-known/jwks.json',
+      jwksUrl: 'https://pomp.example/.well-known/jwks.json',
       fetch: fetchLike,
     })
     expect(result.ok).toBe(true)
-    expect(seen).toEqual(['https://vmm.example/.well-known/jwks.json'])
+    expect(seen).toEqual(['https://pomp.example/.well-known/jwks.json'])
 
     const failing = await verifyExport(signed, {
-      jwksUrl: 'https://vmm.example/.well-known/jwks.json',
+      jwksUrl: 'https://pomp.example/.well-known/jwks.json',
       fetch: async () => new Response('', { status: 503 }),
     })
     expect(failing.ok).toBe(false)
@@ -116,7 +116,7 @@ describe('verifyExport', () => {
     expect(unknownKey).toEqual({
       ok: false,
       reason: 'signature does not verify',
-      kid: 'vmm-1',
+      kid: 'pomp-1',
     })
     await expect(verifyExport(signed, {})).rejects.toThrow(/jwks/u)
   })

@@ -1,5 +1,5 @@
 {
-  "name": "@verifymymeeting/vcon",
+  "name": "@proofofmeet/vcon",
   "version": "0.1.0",
   "description": "IETF vCon (draft-ietf-vcon-vcon-core-05, syntax 0.5.0) types, builder, validator, content hashes, JWS signing, and the ProofOfMeetProtocol extension and mapping",
   "license": "Apache-2.0",
@@ -18,7 +18,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@verifymymeeting/sdk": "workspace:*"
+    "@proofofmeet/sdk": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.9.3",

@@ -19,7 +19,7 @@ const fixtureDir = fileURLToPath(new URL('../test-fixtures/', import.meta.url))
 
 function sample(): Vcon {
   const vcon = createVcon({
-    uuid: '71a32ea6-9a91-57a1-865b-62e4bff8c148',
+    uuid: '07ff0c10-f61d-519d-8e6b-b08721f96097',
     created_at: '2026-11-07T10:00:00Z',
     subject: 'Signing',
   })
@@ -45,13 +45,13 @@ describe('signVcon / verifyVcon', () => {
     const vcon = sample()
     const signed = await signVcon(vcon, {
       privateKey: key.privateKey,
-      kid: 'vmm-1',
+      kid: 'pomp-1',
     })
     expect(signed.signatures).toHaveLength(1)
     const header = protectedHeaderOf(signed.signatures[0]!)
     expect(header).toEqual({
       alg: 'EdDSA',
-      kid: 'vmm-1',
+      kid: 'pomp-1',
       uuid: vcon.uuid,
       cty: 'application/vcon',
     })
@@ -59,14 +59,14 @@ describe('signVcon / verifyVcon', () => {
     expect(payloadMediatype(signed)).toBe('application/vcon')
     expect(await unsignedFrom(signed)).toEqual(vcon)
 
-    const jwks = { keys: [jwkFromRawEd25519(key.raw, 'vmm-1')] }
+    const jwks = { keys: [jwkFromRawEd25519(key.raw, 'pomp-1')] }
     expect(jwks.keys[0]).toMatchObject({
       kty: 'OKP',
       crv: 'Ed25519',
-      kid: 'vmm-1',
+      kid: 'pomp-1',
     })
     const result = await verifyVcon(signed, resolverFromJwks(jwks))
-    expect(result).toMatchObject({ ok: true, kid: 'vmm-1', alg: 'EdDSA' })
+    expect(result).toMatchObject({ ok: true, kid: 'pomp-1', alg: 'EdDSA' })
     if (result.ok) expect(result.vcon).toEqual(vcon)
 
     // Also with a CryptoKey resolver.
@@ -103,7 +103,7 @@ describe('signVcon / verifyVcon', () => {
       (
         await verifyVcon(
           signed,
-          resolverFromJwks({ keys: [jwkFromRawEd25519(other.raw, 'vmm-1')] }),
+          resolverFromJwks({ keys: [jwkFromRawEd25519(other.raw, 'pomp-1')] }),
         )
       ).ok,
     ).toBe(false)

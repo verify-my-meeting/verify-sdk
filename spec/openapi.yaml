@@ -12,8 +12,8 @@ info:
     humanity-score snapshot; batches of attestation hashes and commit hashes
     are anchored to OpenTimestamps.
 
-    Authentication: `Authorization: Bearer vmm_sk_...` (integrator API key,
-    acting as the integrator) or `Bearer vmm_ct_...` (consent token, acting on
+    Authentication: `Authorization: Bearer pomp_sk_...` (integrator API key,
+    acting as the integrator) or `Bearer pomp_ct_...` (consent token, acting on
     behalf of the owner who approved the integrator). Verification pages,
     receipts, and batches are readable without credentials. Attestation and
     withdrawal are available only to a signed-in participant in the
@@ -30,7 +30,7 @@ info:
     Every response carries `x-request-id`, `ratelimit-limit`,
     `ratelimit-remaining`, and `ratelimit-reset` headers.
 servers:
-  - url: https://verifymymeeting.com
+  - url: https://proofofmeet.com
     description: Production (placeholder hostname)
 security:
   - bearer: []
@@ -847,7 +847,7 @@ components:
     bearer:
       type: http
       scheme: bearer
-      description: '`vmm_sk_...` integrator API key or `vmm_ct_...` consent token'
+      description: '`pomp_sk_...` integrator API key or `pomp_ct_...` consent token'
   parameters:
     CommitHash:
       name: hash
@@ -1836,7 +1836,7 @@ components:
         serviceSignatureB64:
           {
             type: [string, 'null'],
-            description: 'Ed25519 over sha512("vmm-batch:<id>:<root>:<leafCount>")',
+            description: 'Ed25519 over sha512("pomp-batch:<id>:<root>:<leafCount>")',
           }
         serviceKeyId: { type: [string, 'null'] }
     BatchList:
@@ -1921,7 +1921,7 @@ components:
       type: object
       required: [access_token, token_type, scope]
       properties:
-        access_token: { type: string, description: '`vmm_ct_...`' }
+        access_token: { type: string, description: '`pomp_ct_...`' }
         token_type: { const: Bearer }
         scope:
           {
@@ -1934,8 +1934,8 @@ components:
       type: object
       description: |
         An unsigned IETF vCon (`draft-ietf-vcon-vcon-core-05`, syntax
-        `0.5.0`) with the `verifymymeeting` extension (spec sections 14 and
-        15). Typed and validated by `@verifymymeeting/vcon`.
+        `0.5.0`) with the `proofofmeet` extension (spec sections 14 and
+        15). Typed and validated by `@proofofmeet/vcon`.
       required: [vcon, uuid, created_at]
       properties:
         vcon: { type: string, example: '0.5.0' }

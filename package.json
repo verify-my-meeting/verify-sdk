@@ -7,8 +7,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "typecheck": "pnpm --filter @verifymymeeting/vcon... build && pnpm -r typecheck",
-    "test": "pnpm --filter @verifymymeeting/vcon... build && pnpm -r test",
+    "typecheck": "pnpm --filter @proofofmeet/vcon... build && pnpm -r typecheck",
+    "test": "pnpm --filter @proofofmeet/vcon... build && pnpm -r test",
     "lint": "pnpm check",
     "build": "pnpm -r build",
     "format": "prettier --write .",

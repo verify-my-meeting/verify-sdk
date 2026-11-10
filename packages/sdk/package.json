@@ -1,5 +1,5 @@
 {
-  "name": "@verifymymeeting/sdk",
+  "name": "@proofofmeet/sdk",
   "version": "0.3.0",
   "description": "Typed API client, protocol types, and proof verification for ProofOfMeetProtocol",
   "license": "Apache-2.0",

@@ -1,5 +1,5 @@
 {
-  "name": "@verifymymeeting/react",
+  "name": "@proofofmeet/react",
   "version": "0.0.0",
   "description": "Embeddable sign-up and attestation component for ProofOfMeetProtocol",
   "license": "Apache-2.0",

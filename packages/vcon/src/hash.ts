@@ -6,7 +6,7 @@
  * carries owner-supplied SHA-256 digests for `link` and `hash` documents.
  * Browser-safe: Web Crypto only.
  */
-import { fromBase64, toBase64Url, toHex, fromHex } from '@verifymymeeting/sdk'
+import { fromBase64, toBase64Url, toHex, fromHex } from '@proofofmeet/sdk'
 
 import type { ContentHash, ContentHashes } from './types.js'
 

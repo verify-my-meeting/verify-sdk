@@ -7,13 +7,13 @@ import {
   textRecordCommitment,
   toHex,
   verifyCommitHash,
-} from '@verifymymeeting/sdk'
+} from '@proofofmeet/sdk'
 import type {
   AttestationPayload,
   CommitBody,
   Receipt,
   TreeEntry,
-} from '@verifymymeeting/sdk'
+} from '@proofofmeet/sdk'
 
 import {
   attestations,
@@ -22,7 +22,7 @@ import {
   identities,
   provenances,
   receipts,
-  VMM_EXTENSION,
+  POMP_EXTENSION,
 } from './extension'
 import { contentHash, parseContentHash } from './hash'
 import {
@@ -32,10 +32,10 @@ import {
   verifyVcon,
 } from './jws'
 import { fromVcon, redactVcon, toVcon } from './mapping'
-import type { ExportLevel, VmmExportInput } from './mapping'
+import type { ExportLevel, PompExportInput } from './mapping'
 import type { Vcon } from './types'
 import { UnknownCriticalExtensionError, validateVcon } from './validate'
-import { vmmVconUuid } from './uuid'
+import { pompVconUuid } from './uuid'
 
 const fixtureDir = fileURLToPath(new URL('../test-fixtures/', import.meta.url))
 
@@ -43,7 +43,7 @@ const transcript = 'Alice: We start.\nBob: Agreed.\nAlice: Done.'
 const summary = 'The meeting started and ended.'
 const workspaceId = '0f1b7a3e-1111-4c1e-9c3f-000000000001'
 
-async function buildInput(): Promise<VmmExportInput> {
+async function buildInput(): Promise<PompExportInput> {
   const transcriptRoot = await textRecordCommitment(transcript)
   const summaryRoot = await textRecordCommitment(summary)
   const linkHashHex = '00'.repeat(32)
@@ -426,7 +426,7 @@ async function buildInput(): Promise<VmmExportInput> {
 }
 
 const baseOptions = {
-  contentBaseUrl: 'https://verifymymeeting.com/api/v1/workspaces/w/content/',
+  contentBaseUrl: 'https://proofofmeet.com/api/v1/workspaces/w/content/',
   mappingVersion: 1 as const,
 }
 
@@ -449,15 +449,15 @@ describe('toVcon', () => {
     expect(validateVcon(a)).toEqual([])
 
     const head = input.commits.find((c) => c.seq === 2)!
-    expect(a.uuid).toBe(await vmmVconUuid(head.hashHex, 'owner'))
+    expect(a.uuid).toBe(await pompVconUuid(head.hashHex, 'owner'))
     expect(a.amended_from).toEqual({
-      uuid: await vmmVconUuid(head.parentHashHex!, 'owner'),
+      uuid: await pompVconUuid(head.parentHashHex!, 'owner'),
     })
     expect(a.redacted_from).toBeUndefined()
     expect(a.created_at).toBe(head.committedAt)
     expect(a.updated_at).toBe(input.renderedAt)
     expect(a.subject).toBe('Interview 7')
-    expect(a.extensions).toEqual([VMM_EXTENSION])
+    expect(a.extensions).toEqual([POMP_EXTENSION])
     expect(a.critical).toBeUndefined()
     expect(a.sessions).toEqual([
       {
@@ -474,33 +474,33 @@ describe('toVcon', () => {
       'Person #1001',
       'Person #1002',
       'Person #1003',
-      'verifymymeeting.com',
+      'proofofmeet.com',
     ])
     expect(a.parties?.[0]).toEqual({
       uuid: 'owner',
       type: 'person',
-      validation: 'verifymymeeting',
+      validation: 'proofofmeet',
       name: 'Owner Org Research',
       org: 'Owner Org',
     })
     expect(a.parties?.[1]).toEqual({
       uuid: 'Person #1001',
       type: 'person',
-      validation: 'verifymymeeting',
+      validation: 'proofofmeet',
       name: 'Alice Example',
       mailto: 'alice@example.com',
     })
     expect(a.parties?.[2]).toEqual({
       uuid: 'Person #1002',
       type: 'person',
-      validation: 'verifymymeeting',
+      validation: 'proofofmeet',
       name: 'Bob',
       org: 'Example Inc',
     })
     expect(a.parties?.[3]).toEqual({
       uuid: 'Person #1003',
       type: 'person',
-      validation: 'verifymymeeting',
+      validation: 'proofofmeet',
       name: 'anonymous',
     })
     expect(a.parties?.[4]?.type).toBe('organization')
@@ -626,7 +626,7 @@ describe('toVcon', () => {
     const input = await buildInput()
     const owner = await toVcon(input, { ...baseOptions, level: 'owner' })
     const source = {
-      url: 'https://verifymymeeting.com/x.vcon.jws',
+      url: 'https://proofofmeet.com/x.vcon.jws',
       content_hash: await contentHash(
         new TextEncoder().encode(JSON.stringify(owner)),
       ),
@@ -638,7 +638,7 @@ describe('toVcon', () => {
     ] as const satisfies ReadonlyArray<ExportLevel>) {
       const redacted = await redactVcon(owner, level, { source })
       expect(validateVcon(redacted)).toEqual([])
-      const stripped: VmmExportInput = {
+      const stripped: PompExportInput = {
         ...input,
         participants: input.participants.map((p) => ({
           ...p,
@@ -661,7 +661,7 @@ describe('toVcon', () => {
     expect(pub.parties?.[1]).toEqual({
       uuid: 'Person #1001',
       type: 'person',
-      validation: 'verifymymeeting',
+      validation: 'proofofmeet',
       name: 'anonymous',
     })
     expect(entryByDoc(pub, 'doc-transcript')).toMatchObject({
@@ -700,8 +700,8 @@ describe('toVcon', () => {
     const owner = await toVcon(input, { ...baseOptions, level: 'owner' })
     const plan = await fromVcon(owner)
     expect(plan.title).toBe('Interview 7')
-    expect(plan.vmm?.commitHashHex).toBe(input.commits[0]!.hashHex)
-    expect(plan.vmm?.attestations).toBe(3)
+    expect(plan.pomp?.commitHashHex).toBe(input.commits[0]!.hashHex)
+    expect(plan.pomp?.attestations).toBe(3)
     expect(plan.parties.map((p) => p.role)).toEqual([
       'owner',
       'participant',
@@ -792,7 +792,7 @@ describe('toVcon', () => {
       ),
     ) as Vcon
     const plan = await fromVcon(email)
-    expect(plan.vmm).toBeNull()
+    expect(plan.pomp).toBeNull()
     expect(plan.title).toBe('Account issue followup')
     expect(plan.parties.map((p) => p.role)).toEqual(['unknown', 'unknown'])
     expect(plan.parties[0]).toMatchObject({
@@ -861,8 +861,8 @@ describe('toVcon', () => {
     })
     const ours: Vcon = {
       ...vcon,
-      extensions: [VMM_EXTENSION],
-      critical: [VMM_EXTENSION],
+      extensions: [POMP_EXTENSION],
+      critical: [POMP_EXTENSION],
     }
     await expect(fromVcon(ours)).resolves.toBeTruthy()
   })

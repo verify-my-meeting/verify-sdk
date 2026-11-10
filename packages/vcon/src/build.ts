@@ -23,7 +23,7 @@ import { VCON_VERSION } from './types.js'
 
 export {
   uuidv5,
-  VMM_VCON_NAMESPACE,
+  POMP_VCON_NAMESPACE,
   DNS_NAMESPACE,
   URL_NAMESPACE,
 } from './uuid.js'

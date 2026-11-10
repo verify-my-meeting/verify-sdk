@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  VmmApiError,
+  PompApiError,
   buildAuthorizeUrl,
   commitCanonical,
   commitHashHex,
@@ -34,22 +34,22 @@ describe('createClient', () => {
         }),
     )
     const client = createClient({
-      baseUrl: 'https://vmm.example',
-      token: 'vmm_sk_test',
+      baseUrl: 'https://pomp.example',
+      token: 'pomp_sk_test',
       fetch: fetchLike,
     })
     const workspace = await client.workspaces.create({ title: 'Interview' })
     expect(workspace.id).toBe('w1')
-    expect(calls[0]!.url.href).toBe('https://vmm.example/api/v1/workspaces')
+    expect(calls[0]!.url.href).toBe('https://pomp.example/api/v1/workspaces')
     expect(calls[0]!.init.method).toBe('POST')
     expect(
       (calls[0]!.init.headers as Record<string, string>).authorization,
-    ).toBe('Bearer vmm_sk_test')
+    ).toBe('Bearer pomp_sk_test')
     expect(calls[0]!.init.body).toBe('{"title":"Interview"}')
     expect(client.rateLimit.remaining).toBe(599)
   })
 
-  it('maps error bodies to VmmApiError', async () => {
+  it('maps error bodies to PompApiError', async () => {
     const { fetchLike } = fakeFetch(
       () =>
         new Response(
@@ -60,12 +60,12 @@ describe('createClient', () => {
         ),
     )
     const client = createClient({
-      baseUrl: 'https://vmm.example',
+      baseUrl: 'https://pomp.example',
       fetch: fetchLike,
     })
     const error = await client.workspaces.list().catch((e: unknown) => e)
-    expect(error).toBeInstanceOf(VmmApiError)
-    const apiError = error as VmmApiError
+    expect(error).toBeInstanceOf(PompApiError)
+    const apiError = error as PompApiError
     expect(apiError.status).toBe(402)
     expect(apiError.code).toBe('standing_required')
     expect(apiError.requestId).toBe('req-1')
@@ -75,15 +75,15 @@ describe('createClient', () => {
     const { calls, fetchLike } = fakeFetch(
       () =>
         new Response(
-          '{"access_token":"vmm_ct_x","token_type":"Bearer","scope":"workspaces:read"}',
+          '{"access_token":"pomp_ct_x","token_type":"Bearer","scope":"workspaces:read"}',
         ),
     )
     const client = createClient({
-      baseUrl: 'https://vmm.example',
+      baseUrl: 'https://pomp.example',
       fetch: fetchLike,
     })
     await client.oauth.exchangeCode({
-      code: 'vmm_ac_1',
+      code: 'pomp_ac_1',
       codeVerifier: 'v'.repeat(43),
       clientId: 'c',
       redirectUri: 'https://app.example/cb',
@@ -104,7 +104,7 @@ describe('createClient', () => {
     expect(pkce.codeChallenge).toMatch(/^[A-Za-z0-9_-]{43}$/u)
     const url = new URL(
       buildAuthorizeUrl({
-        baseUrl: 'https://vmm.example',
+        baseUrl: 'https://pomp.example',
         clientId: 'client',
         redirectUri: 'https://app.example/cb',
         state: 's',
@@ -141,7 +141,7 @@ describe('createClient', () => {
       )
     })
     const client = createClient({
-      baseUrl: 'https://vmm.example',
+      baseUrl: 'https://pomp.example',
       fetch: fetchLike,
     })
     const verified = await client.commits.verify(hashHex)
@@ -174,8 +174,8 @@ describe('createClient', () => {
       })
     })
     const client = createClient({
-      baseUrl: 'https://vmm.example',
-      token: 'vmm_ct_test',
+      baseUrl: 'https://pomp.example',
+      token: 'pomp_ct_test',
       fetch: fetchLike,
     })
     const head = await client.vcon.export('w1')
@@ -209,7 +209,7 @@ describe('createClient', () => {
     )
     expect(
       (calls[2]!.init.headers as Record<string, string>).authorization,
-    ).toBe('Bearer vmm_ct_test')
+    ).toBe('Bearer pomp_ct_test')
   })
 
   it('imports a vCon as JSON and an email thread as a raw body', async () => {
@@ -222,8 +222,8 @@ describe('createClient', () => {
       () => new Response(JSON.stringify(result)),
     )
     const client = createClient({
-      baseUrl: 'https://vmm.example',
-      token: 'vmm_sk_test',
+      baseUrl: 'https://pomp.example',
+      token: 'pomp_sk_test',
       fetch: fetchLike,
     })
     const imported = await client.vcon.import({
@@ -267,7 +267,7 @@ describe('createClient', () => {
           kty: 'OKP',
           crv: 'Ed25519',
           x: 'AAAA',
-          kid: 'vmm-1',
+          kid: 'pomp-1',
           use: 'sig',
           alg: 'EdDSA',
         },
@@ -277,11 +277,13 @@ describe('createClient', () => {
       () => new Response(JSON.stringify(jwks)),
     )
     const client = createClient({
-      baseUrl: 'https://vmm.example/',
+      baseUrl: 'https://pomp.example/',
       fetch: fetchLike,
     })
     expect(await client.vcon.jwks()).toEqual(jwks)
-    expect(calls[0]!.url.href).toBe('https://vmm.example/.well-known/jwks.json')
+    expect(calls[0]!.url.href).toBe(
+      'https://pomp.example/.well-known/jwks.json',
+    )
     expect(calls[0]!.init.headers).not.toHaveProperty('authorization')
   })
 })
