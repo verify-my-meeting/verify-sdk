@@ -5,8 +5,8 @@
  * functions mutate the given vCon so that index bookkeeping stays simple;
  * `cloneVcon` gives a deep copy when a snapshot is needed.
  */
-import { contentHash } from './hash'
-import type { HashAlgorithm } from './hash'
+import { contentHash } from './hash.js'
+import type { HashAlgorithm } from './hash.js'
 import type {
   Analysis,
   Attachment,
@@ -18,15 +18,15 @@ import type {
   Party,
   Session,
   Vcon,
-} from './types'
-import { VCON_VERSION } from './types'
+} from './types.js'
+import { VCON_VERSION } from './types.js'
 
 export {
   uuidv5,
   VMM_VCON_NAMESPACE,
   DNS_NAMESPACE,
   URL_NAMESPACE,
-} from './uuid'
+} from './uuid.js'
 
 export type CreateVconOptions = {
   /** Omit to get a random version 4 UUID from `crypto.randomUUID()`. */

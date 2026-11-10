@@ -4,7 +4,7 @@
  * participants; never stored or signed. This is the published rule; the
  * VerifyMyMeeting server mirrors it in `src/lib/proofs/grade.ts`.
  */
-import type { Provenance } from './commit'
+import type { Provenance } from './commit.js'
 
 export const witnesses = [
   'author',

@@ -3,16 +3,16 @@
  * Hand-written against the server's domain modules; `spec/openapi.yaml` is
  * the published contract.
  */
-import type { JsonValue } from './proofs/canonicalize'
+import type { JsonValue } from './proofs/canonicalize.js'
 import type {
   CommitAuthor,
   CommitBody,
   CommitKind,
   Provenance,
   TreeEntry,
-} from './proofs/commit'
-import type { GradeResult, Witness } from './proofs/grade'
-import type { Receipt, ReceiptVerdict } from './proofs/receipt'
+} from './proofs/commit.js'
+import type { GradeResult, Witness } from './proofs/grade.js'
+import type { Receipt, ReceiptVerdict } from './proofs/receipt.js'
 
 export type Visibility = 'private' | 'link' | 'public'
 export type WorkspaceStatus = 'draft' | 'open' | 'closed'

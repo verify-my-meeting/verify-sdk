@@ -2,8 +2,8 @@
  * Inclusion receipts and their offline verification. Mirrors
  * `src/lib/proofs/receipt.ts` in the VerifyMyMeeting server.
  */
-import type { AuditStep } from './merkle'
-import { verifyInclusion } from './merkle'
+import type { AuditStep } from './merkle.js'
+import { verifyInclusion } from './merkle.js'
 
 export type Receipt = {
   v: 2

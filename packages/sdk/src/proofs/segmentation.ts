@@ -9,8 +9,8 @@
  * without a colon), the text is split at those lines. Otherwise it is split
  * on blank lines. Each leaf is `index 0x1f version 0x1f segment` in UTF-8.
  */
-import { concat, utf8 } from './bytes'
-import { leafHash, rootFromLeafHashes } from './merkle'
+import { concat, utf8 } from './bytes.js'
+import { leafHash, rootFromLeafHashes } from './merkle.js'
 
 export const segmentationVersion = 'v1'
 

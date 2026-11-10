@@ -1,5 +1,5 @@
-export { canonicalize } from './canonicalize'
-export type { JsonValue } from './canonicalize'
+export { canonicalize } from './canonicalize.js'
+export type { JsonValue } from './canonicalize.js'
 export {
   auditPath,
   fromHex,
@@ -10,10 +10,10 @@ export {
   rootFromLeaves,
   toHex,
   verifyInclusion,
-} from './merkle'
-export type { AuditStep } from './merkle'
-export { verifyReceipt } from './receipt'
-export type { Receipt, ReceiptVerdict } from './receipt'
+} from './merkle.js'
+export type { AuditStep } from './merkle.js'
+export { verifyReceipt } from './receipt.js'
+export type { Receipt, ReceiptVerdict } from './receipt.js'
 export {
   leafBytes,
   normalizeText,
@@ -22,10 +22,17 @@ export {
   segmentText,
   segmentationVersion,
   textRecordCommitment,
-} from './segmentation'
-export type { Segment } from './segmentation'
-export { payloadHash, verifySignature } from './signature'
-export { concat, fromBase64, sha256, sha512, toBase64Url, utf8 } from './bytes'
+} from './segmentation.js'
+export type { Segment } from './segmentation.js'
+export { payloadHash, verifySignature } from './signature.js'
+export {
+  concat,
+  fromBase64,
+  sha256,
+  sha512,
+  toBase64Url,
+  utf8,
+} from './bytes.js'
 export {
   aiInvolvements,
   aiRoles,
@@ -40,7 +47,7 @@ export {
   provenanceTypes,
   verifyChain,
   verifyCommitHash,
-} from './commit'
+} from './commit.js'
 export type {
   AiInvolvement,
   AiRole,
@@ -53,12 +60,12 @@ export type {
   Provenance,
   ProvenanceType,
   TreeEntry,
-} from './commit'
+} from './commit.js'
 export {
   declarationCap,
   gradeDocument,
   statementGrade,
   suggestWitness,
   witnesses,
-} from './grade'
-export type { Grade, GradeResult, Witness } from './grade'
+} from './grade.js'
+export type { Grade, GradeResult, Witness } from './grade.js'

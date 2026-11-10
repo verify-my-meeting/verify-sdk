@@ -8,7 +8,7 @@
  */
 export const PACKAGE_VERSION = '0.1.0'
 
-export * from './types'
+export * from './types.js'
 export {
   contentHash,
   contentHashFromDigest,
@@ -18,8 +18,8 @@ export {
   parseContentHashes,
   preferredContentHash,
   verifyContentHash,
-} from './hash'
-export type { HashAlgorithm, ParsedContentHash } from './hash'
+} from './hash.js'
+export type { HashAlgorithm, ParsedContentHash } from './hash.js'
 export {
   bytesToUuid,
   DNS_NAMESPACE,
@@ -29,7 +29,7 @@ export {
   uuidv5,
   VMM_VCON_NAMESPACE,
   vmmVconUuid,
-} from './uuid'
+} from './uuid.js'
 export {
   addAnalysis,
   addAttachment,
@@ -44,16 +44,16 @@ export {
   inlineJson,
   inlineText,
   useExtension,
-} from './build'
-export type { CreateVconOptions } from './build'
+} from './build.js'
+export type { CreateVconOptions } from './build.js'
 export {
   assertKnownCritical,
   assertValidVcon,
   UnknownCriticalExtensionError,
   validateVcon,
   VconValidationError,
-} from './validate'
-export type { Problem } from './validate'
+} from './validate.js'
+export type { Problem } from './validate.js'
 export {
   headerOf,
   jwkFromRawEd25519,
@@ -64,20 +64,20 @@ export {
   signVcon,
   unsignedFrom,
   verifyVcon,
-} from './jws'
+} from './jws.js'
 export type {
   JwsAlgorithm,
   KeyResolver,
   SignOptions,
   VerifyResult,
-} from './jws'
-export { exportVcon, importVcon, verifyExport } from './client'
+} from './jws.js'
+export { exportVcon, importVcon, verifyExport } from './client.js'
 export type {
   ExportedVcon,
   ExportVconOptions,
   ImportVconInput,
   VerifyExportOptions,
-} from './client'
+} from './client.js'
 export {
   attestations,
   commitments,
@@ -97,7 +97,7 @@ export {
   vmmKinds,
   vmmMediatype,
   vmmPurposes,
-} from './extension'
+} from './extension.js'
 export type {
   AttestationRecord,
   CommitmentRecord,
@@ -116,7 +116,7 @@ export type {
   VmmPayloadByKind,
   VmmPurpose,
   WitnessStatement,
-} from './extension'
+} from './extension.js'
 export {
   disclosedAt,
   fromVcon,
@@ -129,7 +129,7 @@ export {
   toVcon,
   URI_LIST_MEDIATYPE,
   VMM_VALIDATION,
-} from './mapping'
+} from './mapping.js'
 export type {
   AttestationInput,
   CommitInput,
@@ -149,4 +149,4 @@ export type {
   ToVconOptions,
   VmmExportInput,
   WorkspaceInput,
-} from './mapping'
+} from './mapping.js'

@@ -5,9 +5,9 @@
  * `SHA-512(canonicalize(body))` (body version 2, spec 2.0). Mirrors `src/lib/proofs/commit.ts` in the
  * VerifyMyMeeting server; browser-safe.
  */
-import { sha512, toHex, utf8 } from './bytes'
-import { canonicalize } from './canonicalize'
-import type { JsonValue } from './canonicalize'
+import { sha512, toHex, utf8 } from './bytes.js'
+import { canonicalize } from './canonicalize.js'
+import type { JsonValue } from './canonicalize.js'
 
 export const provenanceTypes = [
   'transcript',

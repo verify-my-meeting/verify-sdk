@@ -7,8 +7,8 @@
  * through this client: participants attest only in VerifyMyMeeting under
  * their own session.
  */
-import { VmmApiError } from './errors'
-import { sha256, toBase64Url, utf8 } from './proofs/bytes'
+import { VmmApiError } from './errors.js'
+import { sha256, toBase64Url, utf8 } from './proofs/bytes.js'
 import type {
   Attestation,
   Batch,
@@ -45,7 +45,7 @@ import type {
   WorkspaceGlimpse,
   WorkspaceInput,
   WorkspaceStatus,
-} from './types'
+} from './types.js'
 
 export type FetchLike = (
   input: string | URL,
@@ -236,7 +236,7 @@ export function createClient(options: ClientOptions) {
         undefined,
         { query: { key: linkKey } },
       )
-      const { verifyCommitHash } = await import('./proofs/commit')
+      const { verifyCommitHash } = await import('./proofs/commit.js')
       return {
         commit: detail,
         valid: await verifyCommitHash(detail.body, detail.hashHex),

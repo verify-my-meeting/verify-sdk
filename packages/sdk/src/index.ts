@@ -12,13 +12,13 @@ export {
   createClient,
   createPkcePair,
   createState,
-} from './client'
+} from './client.js'
 export type {
   ClientOptions,
   FetchLike,
   RateLimitInfo,
   VmmClient,
-} from './client'
-export { VmmApiError } from './errors'
-export * from './types'
-export * from './proofs/index'
+} from './client.js'
+export { VmmApiError } from './errors.js'
+export * from './types.js'
+export * from './proofs/index.js'

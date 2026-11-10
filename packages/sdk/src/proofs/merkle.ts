@@ -11,7 +11,7 @@
  * Crypto digests are asynchronous, so every hashing function here returns a
  * Promise.
  */
-import { fromHex, sha512, toHex } from './bytes'
+import { fromHex, sha512, toHex } from './bytes.js'
 
 export type AuditStep = { hash: string; side: 'left' | 'right' }
 

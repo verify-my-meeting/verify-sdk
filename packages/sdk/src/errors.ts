@@ -1,4 +1,4 @@
-import type { ApiErrorBody } from './types'
+import type { ApiErrorBody } from './types.js'
 
 /** A non-2xx response from the VerifyMyMeeting API. */
 export class VmmApiError extends Error {

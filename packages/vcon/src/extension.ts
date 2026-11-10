@@ -20,7 +20,7 @@ import type {
   Witness,
 } from '@verifymymeeting/sdk'
 
-import type { Attachment, DateString, Vcon } from './types'
+import type { Attachment, DateString, Vcon } from './types.js'
 
 export const VMM_EXTENSION = 'verifymymeeting'
 

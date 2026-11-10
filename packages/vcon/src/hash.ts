@@ -8,7 +8,7 @@
  */
 import { fromBase64, toBase64Url, toHex, fromHex } from '@verifymymeeting/sdk'
 
-import type { ContentHash, ContentHashes } from './types'
+import type { ContentHash, ContentHashes } from './types.js'
 
 export type HashAlgorithm = 'sha512' | 'sha256'
 

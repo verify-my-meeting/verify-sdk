@@ -35,7 +35,7 @@ import {
   VMM_MAPPING_VERSION,
   vmmAttachment,
   isVmmAttachment,
-} from './extension'
+} from './extension.js'
 import type {
   AttestationRecord,
   CommitmentRecord,
@@ -45,12 +45,12 @@ import type {
   ProvenanceRecord,
   VerifiedIdentifier,
   WitnessStatement,
-} from './extension'
+} from './extension.js'
 import {
   contentHash,
   contentHashFromDigest,
   preferredContentHash,
-} from './hash'
+} from './hash.js'
 import type {
   Analysis,
   Attachment,
@@ -62,10 +62,10 @@ import type {
   RedactedString,
   Session,
   Vcon,
-} from './types'
-import { VCON_VERSION } from './types'
-import { uuidv5, VMM_VCON_NAMESPACE, vmmVconUuid } from './uuid'
-import { assertKnownCritical } from './validate'
+} from './types.js'
+import { VCON_VERSION } from './types.js'
+import { uuidv5, VMM_VCON_NAMESPACE, vmmVconUuid } from './uuid.js'
+import { assertKnownCritical } from './validate.js'
 
 export type ExportLevel = 'owner' | 'viewer' | 'link' | 'public'
 

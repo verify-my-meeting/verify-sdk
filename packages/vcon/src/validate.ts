@@ -5,7 +5,7 @@
  * of the draft are reported as problems; SHOULD-level rules are not
  * checked here (a transcript-less dialog is legal in a redacted vCon).
  */
-import { isContentHashToken } from './hash'
+import { isContentHashToken } from './hash.js'
 import type {
   Analysis,
   Attachment,
@@ -13,8 +13,8 @@ import type {
   Event,
   Session,
   Vcon,
-} from './types'
-import { encodings, VCON_VERSION } from './types'
+} from './types.js'
+import { encodings, VCON_VERSION } from './types.js'
 
 export type Problem = {
   /** JSON pointer-like path, e.g. `/dialog/0/content_hash`. */

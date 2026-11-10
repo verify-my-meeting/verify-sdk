@@ -16,8 +16,8 @@
  */
 import { fromBase64, toBase64Url, utf8 } from '@verifymymeeting/sdk'
 
-import type { JwsHeader, SignedVcon, Vcon } from './types'
-import { VCON_GZIP_MEDIATYPE, VCON_MEDIATYPE } from './types'
+import type { JwsHeader, SignedVcon, Vcon } from './types.js'
+import { VCON_GZIP_MEDIATYPE, VCON_MEDIATYPE } from './types.js'
 
 export type JwsAlgorithm = 'EdDSA' | 'ES256' | 'RS256'
 

@@ -7,9 +7,9 @@
  */
 import type { Jwks, VmmClient } from '@verifymymeeting/sdk'
 
-import { resolverFromJwks, unsignedFrom, verifyVcon } from './jws'
-import type { VerifyResult } from './jws'
-import type { SignedVcon, Vcon } from './types'
+import { resolverFromJwks, unsignedFrom, verifyVcon } from './jws.js'
+import type { VerifyResult } from './jws.js'
+import type { SignedVcon, Vcon } from './types.js'
 
 export type ExportVconOptions = {
   /** Sequence number or commit hash; the head commit by default. */
