@@ -220,6 +220,8 @@ export type Invitation = {
   expiresAt: string
   revokedAt: string | null
   createdAt: string
+  /** The three-word code on an open invitation, when one is set (owner lists). */
+  code?: string | null
 }
 
 export type InvitationInput = {

@@ -472,6 +472,19 @@ export function createClient(options: ClientOptions) {
     /** Verification page by public slug, link token, or workspace id. */
     verify: (key: string) =>
       request<VerificationPage>('GET', `/api/v1/verify/${key}`),
+    /**
+     * The share card of a verification page as SVG (`/verify/:key/card`),
+     * at the caller's level like the page itself.
+     */
+    shareCard: async (key: string) => {
+      const response = await send(
+        'GET',
+        `/api/v1/verify/${key}/card`,
+        undefined,
+        { accept: 'image/svg+xml' },
+      )
+      return response.text()
+    },
     /** Inclusion receipt for an attestation or commit (by id or hash), if anchored. */
     receipt: (kind: 'attestation' | 'commit', id: string) =>
       request<ReceiptResponse>('GET', `/api/v1/receipts/${kind}/${id}`),
