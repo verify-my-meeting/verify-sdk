@@ -77,7 +77,7 @@ const signed = await signVcon(vcon, { privateKey, kid: 'pomp-2026-11' })
 // { payload, signatures: [{ protected, signature }] }, alg EdDSA, kid, uuid
 // and cty in the protected header.
 
-const jwks = await fetch('https://proofofmeet.com/.well-known/jwks.json').then(
+const jwks = await fetch('https://proofofmeet.org/.well-known/jwks.json').then(
   (r) => r.json(),
 )
 const result = await verifyVcon(signed, resolverFromJwks(jwks))
@@ -100,7 +100,7 @@ import { toVcon, redactVcon, fromVcon } from '@proofofmeet/vcon'
 
 const owner = await toVcon(bundle, {
   level: 'owner',
-  contentBaseUrl: 'https://proofofmeet.com/api/v1/workspaces/<id>/content/',
+  contentBaseUrl: 'https://proofofmeet.org/api/v1/workspaces/<id>/content/',
   mappingVersion: 1,
 })
 const publicView = await redactVcon(owner, 'public')
@@ -123,14 +123,14 @@ helpers wrap the vCon endpoints and keep the document typed:
 import { createClient } from '@proofofmeet/sdk'
 import { exportVcon, importVcon, verifyExport } from '@proofofmeet/vcon'
 
-const client = createClient({ baseUrl: 'https://proofofmeet.com', token })
+const client = createClient({ baseUrl: 'https://proofofmeet.org', token })
 
 // GET /api/v1/workspaces/:id/vcon, signed; `vcon` is the decoded payload.
 const { signed, vcon } = await exportVcon(client, workspaceId, { commit: 3 })
 
 // Verify against the service JWK Set (fetched, or pass `jwks`).
 const result = await verifyExport(signed, {
-  jwksUrl: 'https://proofofmeet.com/.well-known/jwks.json',
+  jwksUrl: 'https://proofofmeet.org/.well-known/jwks.json',
 })
 if (!result.ok) throw new Error(result.reason)
 

@@ -200,10 +200,10 @@ describe('uuidv5', () => {
   })
 
   it('derives the ProofOfMeetProtocol namespace from the DNS namespace', async () => {
-    expect(await uuidv5(DNS_NAMESPACE, 'proofofmeet.com/vcon')).toBe(
+    expect(await uuidv5(DNS_NAMESPACE, 'proofofmeet.org/vcon')).toBe(
       POMP_VCON_NAMESPACE,
     )
-    expect(nodeUuidv5(DNS_NAMESPACE, 'proofofmeet.com/vcon')).toBe(
+    expect(nodeUuidv5(DNS_NAMESPACE, 'proofofmeet.org/vcon')).toBe(
       POMP_VCON_NAMESPACE,
     )
   })

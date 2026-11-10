@@ -2,7 +2,7 @@
 /**
  * `proofofmeet-mcp`: run the MCP server over stdio.
  *
- *   POMP_BASE_URL=https://proofofmeet.com POMP_TOKEN=pomp_sk_... proofofmeet-mcp
+ *   POMP_BASE_URL=https://proofofmeet.org POMP_TOKEN=pomp_sk_... proofofmeet-mcp
  */
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 

@@ -11,7 +11,7 @@ are in `packages/vcon/test-fixtures/` and round-trip in the tests.
 
 - `spec/README.md`: section 14 (extension) and 15 (mapping). Root README
   lists the package. Nothing under `packages/sdk` or `packages/mcp` changed.
-- `VMM_VCON_NAMESPACE = 07ff0c10-f61d-519d-8e6b-b08721f96097`
+- `VMM_VCON_NAMESPACE = 71a32ea6-9a91-57a1-865b-62e4bff8c148`
   (`uuidv5(DNS, "verifymymeeting.com/vcon")`).
 
 Where the draft contradicted the question doc, the draft won:

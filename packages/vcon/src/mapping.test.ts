@@ -426,7 +426,7 @@ async function buildInput(): Promise<PompExportInput> {
 }
 
 const baseOptions = {
-  contentBaseUrl: 'https://proofofmeet.com/api/v1/workspaces/w/content/',
+  contentBaseUrl: 'https://proofofmeet.org/api/v1/workspaces/w/content/',
   mappingVersion: 1 as const,
 }
 
@@ -474,7 +474,7 @@ describe('toVcon', () => {
       'Person #1001',
       'Person #1002',
       'Person #1003',
-      'proofofmeet.com',
+      'proofofmeet.org',
     ])
     expect(a.parties?.[0]).toEqual({
       uuid: 'owner',
@@ -626,7 +626,7 @@ describe('toVcon', () => {
     const input = await buildInput()
     const owner = await toVcon(input, { ...baseOptions, level: 'owner' })
     const source = {
-      url: 'https://proofofmeet.com/x.vcon.jws',
+      url: 'https://proofofmeet.org/x.vcon.jws',
       content_hash: await contentHash(
         new TextEncoder().encode(JSON.stringify(owner)),
       ),

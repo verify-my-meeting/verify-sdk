@@ -11,8 +11,7 @@ identifiers the first pass left alone:
   vCon extension name and namespace key `verifymymeeting` are
   `proofofmeet`.
 - The vCon UUID namespace is derived from the DNS namespace and the
-  product name, so it changed from `71a32ea6-…` to `07ff0c10-f61d-519d-
-  8e6b-b08721f96097`; the test, the spec and the docs carry the new
+  product name (`proofofmeet.org/vcon`), so it changed from `71a32ea6-…` to `0a1ef5b3-f353-5995-a562-29895c6a9e87`; the test, the spec and the docs carry the new
   value. Pre-launch, no exported vCon exists outside local tests.
 - GitHub org `verify-my-meeting` kept; the `verifymymeeting` repo is
   renamed `proofofmeet` on GitHub and in repository URLs.

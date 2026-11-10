@@ -376,7 +376,7 @@ Verification rules a ProofOfMeetProtocol-aware reader applies, each with the
 SDK function that implements it:
 
 1. The JWS signature of the signed form verifies against a key in
-   `https://proofofmeet.com/.well-known/jwks.json` named by `kid`, and
+   `https://proofofmeet.org/.well-known/jwks.json` named by `kid`, and
    the `uuid` header equals the payload's `uuid` (`verifyVcon`).
 2. The commitment's `body` hashes to its `hashHex` (`verifyCommitHash`),
    `body.seq`, `body.parent` and `body.workspace` are consistent with the
@@ -408,8 +408,8 @@ increments it.
 
 - `uuid` is a version 5 UUID (RFC 9562) of the lowercase commit hash under
   the namespace `POMP_VCON_NAMESPACE =
-07ff0c10-f61d-519d-8e6b-b08721f96097`, itself
-  `uuidv5(DNS namespace, "proofofmeet.com/vcon")`. A lower level uses
+0a1ef5b3-f353-5995-a562-29895c6a9e87`, itself
+  `uuidv5(DNS namespace, "proofofmeet.org/vcon")`. A lower level uses
   the name `<commit hash>:<level>`. Re-rendering a commit at a level gives
   the same uuid. (The draft recommends version 8 time-based UUIDs; that is
   a SHOULD, and stability under re-rendering matters more here.)
@@ -435,7 +435,7 @@ validation: "proofofmeet", name?, org? }`.
   status of each identifier and the self-declared labels go in the
   `identity` attachment. Withdrawn participants remain as `anonymous`
   parties (their attestations are tombstones).
-- The last party is the service: `{ uuid: "proofofmeet.com", type:
+- The last party is the service: `{ uuid: "proofofmeet.org", type:
 "organization", name: "ProofOfMeetProtocol" }`, the `party` of receipts.
 - Exactly one Session Object (the draft requires one when `dialog` is
   non-empty): `start` = actual start, else scheduled start, else commit

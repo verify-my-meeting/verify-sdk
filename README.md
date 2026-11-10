@@ -23,7 +23,7 @@ scope is registered at first publish.
 import { createClient } from '@proofofmeet/sdk'
 
 const pomp = createClient({
-  baseUrl: 'https://proofofmeet.com',
+  baseUrl: 'https://proofofmeet.org',
   token: process.env.POMP_TOKEN, // pomp_sk_... or pomp_ct_...
 })
 
@@ -108,7 +108,7 @@ const pkce = await createPkcePair()
 const state = createState()
 // store pkce.codeVerifier and state in the session, then redirect to:
 const url = buildAuthorizeUrl({
-  baseUrl: 'https://proofofmeet.com',
+  baseUrl: 'https://proofofmeet.org',
   clientId: INTEGRATOR_ID,
   redirectUri: 'https://app.example/pomp/callback',
   state,
@@ -129,7 +129,7 @@ const token = await pomp.oauth.exchangeCode({
 Run over stdio with an API key or consent token:
 
 ```sh
-POMP_BASE_URL=https://proofofmeet.com POMP_TOKEN=pomp_sk_... npx -y @proofofmeet/mcp
+POMP_BASE_URL=https://proofofmeet.org POMP_TOKEN=pomp_sk_... npx -y @proofofmeet/mcp
 ```
 
 Claude Desktop, Claude Code, or Codex configuration:
@@ -141,7 +141,7 @@ Claude Desktop, Claude Code, or Codex configuration:
       "command": "npx",
       "args": ["-y", "@proofofmeet/mcp"],
       "env": {
-        "POMP_BASE_URL": "https://proofofmeet.com",
+        "POMP_BASE_URL": "https://proofofmeet.org",
         "POMP_TOKEN": "pomp_sk_..."
       }
     }

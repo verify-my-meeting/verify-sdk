@@ -42,7 +42,7 @@ export async function exportVcon(
 export type VerifyExportOptions = {
   /** A JWK Set already in hand, e.g. from `client.vcon.jwks()`. */
   jwks?: Jwks | { keys: Array<JsonWebKey & { kid?: string }> }
-  /** Where to fetch the JWK Set, e.g. `https://proofofmeet.com/.well-known/jwks.json`. */
+  /** Where to fetch the JWK Set, e.g. `https://proofofmeet.org/.well-known/jwks.json`. */
   jwksUrl?: string | URL
   fetch?: (input: string | URL, init?: RequestInit) => Promise<Response>
 }

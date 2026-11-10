@@ -14,10 +14,10 @@ export const DNS_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'
 export const URL_NAMESPACE = '6ba7b811-9dad-11d1-80b4-00c04fd430c8'
 
 /**
- * `uuidv5(DNS_NAMESPACE, 'proofofmeet.com/vcon')`: the namespace under
+ * `uuidv5(DNS_NAMESPACE, 'proofofmeet.org/vcon')`: the namespace under
  * which ProofOfMeetProtocol derives every vCon uuid (spec section 15).
  */
-export const POMP_VCON_NAMESPACE = '07ff0c10-f61d-519d-8e6b-b08721f96097'
+export const POMP_VCON_NAMESPACE = '0a1ef5b3-f353-5995-a562-29895c6a9e87'
 
 const uuidSyntax =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu

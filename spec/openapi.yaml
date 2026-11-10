@@ -30,7 +30,7 @@ info:
     Every response carries `x-request-id`, `ratelimit-limit`,
     `ratelimit-remaining`, and `ratelimit-reset` headers.
 servers:
-  - url: https://proofofmeet.com
+  - url: https://proofofmeet.org
     description: Production (placeholder hostname)
 security:
   - bearer: []

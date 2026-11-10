@@ -93,7 +93,7 @@ describe('createVmmMcpServer', () => {
       await crypto.subtle.exportKey('raw', pair.publicKey),
     )
     const vcon = createVcon({
-      uuid: '07ff0c10-f61d-519d-8e6b-b08721f96097',
+      uuid: '0a1ef5b3-f353-5995-a562-29895c6a9e87',
       created_at: '2026-11-07T10:00:00Z',
       subject: 'Interview 7',
     })

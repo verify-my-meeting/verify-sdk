@@ -53,7 +53,7 @@ export type FetchLike = (
 ) => Promise<Response>
 
 export type ClientOptions = {
-  /** Origin of the ProofOfMeetProtocol deployment, e.g. `https://proofofmeet.com`. */
+  /** Origin of the ProofOfMeetProtocol deployment, e.g. `https://proofofmeet.org`. */
   baseUrl: string | URL
   /** `pomp_sk_...` or `pomp_ct_...`. Omit for public reads. */
   token?: string

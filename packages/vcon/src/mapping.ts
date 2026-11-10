@@ -71,7 +71,7 @@ export type ExportLevel = 'owner' | 'viewer' | 'link' | 'public'
 
 /** Party `uuid` of the workspace owner and of the service. */
 export const OWNER_PARTY_UUID = 'owner'
-export const SERVICE_PARTY_UUID = 'proofofmeet.com'
+export const SERVICE_PARTY_UUID = 'proofofmeet.org'
 export const SERVICE_PARTY_NAME = 'ProofOfMeetProtocol'
 /** `validation` token on every party ProofOfMeetProtocol vouches for. */
 export const POMP_VALIDATION = 'proofofmeet'
