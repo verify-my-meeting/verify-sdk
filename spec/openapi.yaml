@@ -1586,11 +1586,13 @@ components:
         confirmer:
           type: object
           description: confirmed only; who signed
-          required: [kind, role, account]
+          required: [kind, role, ref]
           properties:
             kind: { type: string, enum: [service] }
             role: { type: string, enum: [owner] }
-            account: { type: string, format: uuid }
+            ref:
+              type: string
+              description: The owner's per-workspace reference (spec 6.1), never an account id
         mode:
           {
             type: string,
@@ -1655,7 +1657,11 @@ components:
               properties:
                 kind: { type: string, enum: [service] }
                 role: { type: string, enum: [owner] }
-                account: { type: string, format: uuid }
+                ref:
+                  {
+                    type: string,
+                    description: The owner's per-workspace reference,
+                  }
             createdAt: { type: string, format: date-time }
             current:
               {
@@ -1782,7 +1788,11 @@ components:
                   properties:
                     kind: { type: string, enum: [service] }
                     role: { type: string, enum: [owner] }
-                    account: { type: string, format: uuid }
+                    ref:
+                      {
+                        type: string,
+                        description: The owner's per-workspace reference,
+                      }
             - { type: 'null' }
         approval:
           oneOf:

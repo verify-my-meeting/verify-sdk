@@ -147,7 +147,7 @@ organiser's side rather than the participant:
   "issuedAt": "<ISO 8601 UTC>",
   "attestation": { "id": "<attendance attestation uuid>", "hash": "<its payloadHashHex>" },
   "mode": "automatic" | "manual",
-  "confirmer": { "kind": "service", "role": "owner", "account": "<owner account id>" }
+  "confirmer": { "kind": "service", "role": "owner", "ref": "<owner reference, 32 hex>" }
 }
 ```
 
@@ -157,9 +157,17 @@ organiser's side rather than the participant:
   `manual` when the organiser confirmed by hand, in bulk or one at a time.
 - `confirmer.kind` names the signer. Today it is `service`: the service
   key (the one in `/.well-known/jwks.json`, also the batch and vCon
-  signer) signs on behalf of the owner whose account id is given, so
-  `keyId` on the row is the service key id. A future `kind` for an
-  owner-held key changes nothing else in the row or the payload.
+  signer) signs on behalf of the owner, so `keyId` on the row is the
+  service key id. A future `kind` for an owner-held key changes nothing
+  else in the row or the payload.
+- `confirmer.ref` is the owner's reference _in this workspace_: a keyed
+  hash of the owner's account, derived per workspace the way participant
+  handles are. It is the same on every confirmation in one workspace, so
+  a reader can see that one party confirmed them all, and unrelated
+  across workspaces, so verification pages of two meetings cannot be
+  matched by owner. Payloads never carry an account id. An owner who
+  wants their meetings seen together publishes a profile for that
+  purpose; the reference is not a key to it.
 - A confirmation is _current_ when its `attestation.id` and `hash` match
   the participant's current attendance attestation; a re-attestation
   makes the earlier confirmation stale until a new one is written.
