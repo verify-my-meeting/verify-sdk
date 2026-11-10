@@ -711,6 +711,11 @@ paths:
                   minItems: 1
                   maxItems: 500
                   items: { type: string, format: uuid }
+                confirmation:
+                  type: string
+                  enum: [automatic-accepted, manual-required]
+                  default: automatic-accepted
+                  description: Which confirmations count toward `confirmedAttendance`
       responses:
         '200':
           description: Aggregate counts
@@ -726,6 +731,8 @@ paths:
                     lowestScore,
                     withdrawals,
                     attendanceAttestations,
+                    confirmedAttendance,
+                    confirmation,
                     recordApprovals,
                   ]
                 properties:
@@ -737,7 +744,74 @@ paths:
                   lowestScore: { type: number, nullable: true }
                   withdrawals: { type: integer }
                   attendanceAttestations: { type: integer }
+                  confirmedAttendance: { type: integer }
+                  confirmation:
+                    {
+                      type: string,
+                      enum: [automatic-accepted, manual-required],
+                    }
                   recordApprovals: { type: integer }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}/confirmations:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    get:
+      tags: [attestations]
+      summary: Confirmation state per active participant (owner)
+      responses:
+        '200':
+          description: Current attendance and latest confirmation per participant
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/ConfirmationView' }
+        default: { $ref: '#/components/responses/Error' }
+    post:
+      tags: [attestations]
+      summary: Confirm attendance by hand (owner), in bulk or per participant
+      description: |
+        Writes a `confirmed` attestation (spec section 6.1, `mode: manual`)
+        for each participant who holds a current attendance attestation and
+        is not already confirmed. Pass `preview: true` first to see the list
+        without writing. Participants without attendance are reported, never
+        confirmed: the organiser confirms second, never first.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfirmInput' }
+      responses:
+        '200':
+          description: The preview or the written confirmations
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConfirmResult' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/v1/workspaces/{id}/confirmations/{participantId}:
+    parameters:
+      - { $ref: '#/components/parameters/WorkspaceId' }
+      - name: participantId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      tags: [attestations]
+      summary: Withdraw a participant's confirmation (owner)
+      description: Tombstones the current confirmation; the participant's own attestation stands.
+      responses:
+        '200':
+          description: How many rows were tombstoned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  withdrawn: { type: integer }
         default: { $ref: '#/components/responses/Error' }
 
   /api/v1/oauth/token:
@@ -1455,7 +1529,8 @@ components:
         id: { type: string, format: uuid }
         workspaceId: { type: string, format: uuid }
         participantId: { type: string, format: uuid }
-        kind: { type: string, enum: [attendance, record, disclosure] }
+        kind:
+          { type: string, enum: [attendance, record, disclosure, confirmed] }
         commitId:
           {
             type: [string, 'null'],
@@ -1488,16 +1563,42 @@ components:
         tombstonedAt: { type: [string, 'null'], format: date-time }
     AttestationPayload:
       type: object
-      required: [v, workspace, handle, issuedAt, score, kind]
+      description: |
+        Participant-signed kinds carry `score`; the organiser-side
+        `confirmed` kind carries `attestation`, `mode` and `confirmer`
+        instead (spec section 6.1).
+      required: [v, workspace, handle, issuedAt, kind]
       properties:
         v: { const: 1 }
         workspace: { type: string, format: uuid }
         handle: { type: string }
         issuedAt: { type: string, format: date-time }
         score: { $ref: '#/components/schemas/ScoreSnapshot' }
-        kind: { type: string, enum: [attendance, record, disclosure] }
+        kind:
+          { type: string, enum: [attendance, record, disclosure, confirmed] }
+        attestation:
+          type: object
+          description: confirmed only; the confirmed attendance attestation
+          required: [id, hash]
+          properties:
+            id: { type: string, format: uuid }
+            hash: { type: string }
+        confirmer:
+          type: object
+          description: confirmed only; who signed
+          required: [kind, role, account]
+          properties:
+            kind: { type: string, enum: [service] }
+            role: { type: string, enum: [owner] }
+            account: { type: string, format: uuid }
         mode:
-          { type: string, enum: [full, range], description: attendance only }
+          {
+            type: string,
+            enum: [full, range, automatic, manual],
+            description: attendance (full,
+            range) or confirmed (automatic,
+            manual),
+          }
         from:
           {
             type: string,
@@ -1533,6 +1634,82 @@ components:
             type: string,
             description: disclosure only; SHA-512 of the viewer profile,
           }
+    ConfirmationView:
+      type: object
+      required: [participantId, handle, attendance, confirmation]
+      properties:
+        participantId: { type: string, format: uuid }
+        handle: { type: string }
+        attendance:
+          type: [object, 'null']
+          properties:
+            id: { type: string, format: uuid }
+            createdAt: { type: string, format: date-time }
+        confirmation:
+          type: [object, 'null']
+          properties:
+            id: { type: string, format: uuid }
+            mode: { type: [string, 'null'], enum: [automatic, manual, null] }
+            confirmer:
+              type: [object, 'null']
+              properties:
+                kind: { type: string, enum: [service] }
+                role: { type: string, enum: [owner] }
+                account: { type: string, format: uuid }
+            createdAt: { type: string, format: date-time }
+            current:
+              {
+                type: boolean,
+                description: True when it names the current attendance attestation,
+              }
+    ConfirmInput:
+      type: object
+      properties:
+        participants:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items: { type: string, format: uuid }
+          description: Specific participants; omitted means everyone who attested
+        within:
+          type: object
+          description: Only attendance attestations made inside this window
+          properties:
+            from: { type: string, format: date-time }
+            to: { type: string, format: date-time }
+        preview:
+          { type: boolean, default: false, description: List without writing }
+    ConfirmResult:
+      type: object
+      required: [preview, toConfirm, alreadyConfirmed, notAttested, created]
+      properties:
+        preview: { type: boolean }
+        toConfirm:
+          type: array
+          items:
+            type: object
+            properties:
+              participantId: { type: string, format: uuid }
+              handle: { type: string }
+              attestationId: { type: string, format: uuid }
+              attestedAt: { type: string, format: date-time }
+        alreadyConfirmed:
+          type: array
+          items:
+            type: object
+            properties:
+              participantId: { type: string, format: uuid }
+              handle: { type: string }
+        notAttested:
+          type: array
+          items:
+            type: object
+            properties:
+              participantId: { type: string, format: uuid }
+              handle: { type: string }
+        created:
+          type: array
+          items: { $ref: '#/components/schemas/Attestation' }
     ProfileFields:
       type: object
       description: |
@@ -1590,6 +1767,22 @@ components:
         attendance:
           oneOf:
             - { $ref: '#/components/schemas/Attestation' }
+            - { type: 'null' }
+        confirmation:
+          description: The organiser's confirmation of the current attendance, or null
+          oneOf:
+            - type: object
+              required: [attestation, mode, confirmer]
+              properties:
+                attestation: { $ref: '#/components/schemas/Attestation' }
+                mode:
+                  { type: [string, 'null'], enum: [automatic, manual, null] }
+                confirmer:
+                  type: [object, 'null']
+                  properties:
+                    kind: { type: string, enum: [service] }
+                    role: { type: string, enum: [owner] }
+                    account: { type: string, format: uuid }
             - { type: 'null' }
         approval:
           oneOf:
@@ -1663,6 +1856,7 @@ components:
           workspace,
           participants,
           withdrawnCount,
+          counts,
           head,
           commits,
           documents,
@@ -1692,6 +1886,14 @@ components:
           type: array
           items: { $ref: '#/components/schemas/VerificationParticipant' }
         withdrawnCount: { type: integer }
+        counts:
+          type: object
+          description: Attested, attested and confirmed, and confirmed by hand
+          required: [attested, confirmed, confirmedManually]
+          properties:
+            attested: { type: integer }
+            confirmed: { type: integer }
+            confirmedManually: { type: integer }
         head:
           oneOf:
             - { $ref: '#/components/schemas/VerificationCommit' }

@@ -33,8 +33,9 @@ that both the server and the SDK are tested against.
   the verification page.
 - **Attestation**: a signed statement by a participant: `attendance`,
   `record` approval (of one commit, with a witness statement per document),
-  or `disclosure`. Append-only; a newer attestation of the same kind
-  supersedes the older for display.
+  or `disclosure`; or the organiser's `confirmed` statement about an
+  attendance attestation (section 6.1). Append-only; a newer attestation
+  of the same kind supersedes the older for display.
 - **Batch**: an anchoring run over new attestation hashes and commit hashes.
 - **Receipt**: the inclusion proof of one item in one batch.
 
@@ -107,6 +108,8 @@ Every payload carries:
 }
 ```
 
+(`confirmed` payloads differ; see 6.1.)
+
 Kind-specific fields:
 
 - `attendance`: `mode: "full"`, or `mode: "range"` with `from` and `to`.
@@ -127,6 +130,44 @@ where the hash algorithm appears. A payload's hashes (`root`, `commit`,
 
 The humanity score is the value Cubid served at signing time. Later score
 changes never alter a stored attestation.
+
+### 6.1 Confirmations
+
+The participant speaks first; the organiser confirms second, never
+first. A `confirmed` attestation is written on the participant's row, can
+only name an attendance attestation that exists, and is signed by the
+organiser's side rather than the participant:
+
+```json
+{
+  "v": 1,
+  "kind": "confirmed",
+  "workspace": "<workspace uuid>",
+  "handle": "Person #4821",
+  "issuedAt": "<ISO 8601 UTC>",
+  "attestation": { "id": "<attendance attestation uuid>", "hash": "<its payloadHashHex>" },
+  "mode": "automatic" | "manual",
+  "confirmer": { "kind": "service", "role": "owner", "account": "<owner account id>" }
+}
+```
+
+- No `score`: the statement is the organiser's, not the participant's.
+- `mode` is `automatic` when the service confirmed as the attendance
+  landed (the workspace default, which an organiser may turn off) and
+  `manual` when the organiser confirmed by hand, in bulk or one at a time.
+- `confirmer.kind` names the signer. Today it is `service`: the service
+  key (the one in `/.well-known/jwks.json`, also the batch and vCon
+  signer) signs on behalf of the owner whose account id is given, so
+  `keyId` on the row is the service key id. A future `kind` for an
+  owner-held key changes nothing else in the row or the payload.
+- A confirmation is _current_ when its `attestation.id` and `hash` match
+  the participant's current attendance attestation; a re-attestation
+  makes the earlier confirmation stale until a new one is written.
+  Withdrawal tombstones it like any other kind.
+- Outward claims (section 11) count only confirmed attendance and say
+  which mode they accepted: `automatic-accepted` (both) or
+  `manual-required`. The verification page keeps showing unconfirmed
+  attestations, marked as such.
 
 ## 7. Signatures
 

@@ -20,7 +20,17 @@ export type AccessLevel = 'none' | 'public' | 'link' | 'viewer' | 'owner'
 export type RecordKind = 'link' | 'hash' | 'text'
 export type ContentVisibility = 'public' | 'link' | 'viewer'
 export type InvitationKind = 'slot' | 'open' | 'viewer'
-export type AttestationKind = 'attendance' | 'record' | 'disclosure'
+/**
+ * `attendance`, `record` and `disclosure` are signed by the participant;
+ * `confirmed` is the organiser's second statement about an attendance
+ * attestation (spec section 6.1), signed by the service on the owner's
+ * behalf until owners hold their own key.
+ */
+export type AttestationKind =
+  'attendance' | 'record' | 'disclosure' | 'confirmed'
+export type ConfirmationMode = 'automatic' | 'manual'
+/** Who signed a confirmation. More kinds follow when owners hold keys. */
+export type ConfirmerRef = { kind: 'service'; role: 'owner'; account: string }
 export type BatchStatus = 'building' | 'submitted' | 'confirmed' | 'failed'
 
 export type ErrorCode =
@@ -290,6 +300,24 @@ export type AttestationPayload =
       /** SHA-512 of the canonical viewer profile fields. */
       viewer: string
     })
+  | ConfirmationPayload
+
+/**
+ * A confirmation carries no score: it is the organiser's statement, not
+ * the participant's. `attestation` names the confirmed attendance
+ * attestation by id and payload hash; `mode` says whether the service
+ * wrote it automatically or the organiser confirmed by hand.
+ */
+export type ConfirmationPayload = {
+  v: 1
+  kind: 'confirmed'
+  workspace: string
+  handle: string
+  issuedAt: string
+  attestation: { id: string; hash: string }
+  mode: ConfirmationMode
+  confirmer: ConfirmerRef
+}
 
 /**
  * What a participant disclosed at a level. `displayName` and
@@ -346,6 +374,12 @@ export type VerificationParticipant = {
   publicKeyHex: string | null
   score: ScoreSnapshot | null
   attendance: Attestation | null
+  /** The organiser's confirmation of the current attendance, or null. */
+  confirmation: {
+    attestation: Attestation
+    mode: ConfirmationMode | null
+    confirmer: ConfirmerRef | null
+  } | null
   approval: ParticipantApproval | null
   profile: ProfileFields
   profileUpdatedAt: string | null
@@ -400,6 +434,8 @@ export type VerificationPage = {
   >
   participants: Array<VerificationParticipant>
   withdrawnCount: number
+  /** Attested, attested and confirmed, and confirmed by hand. */
+  counts: { attested: number; confirmed: number; confirmedManually: number }
   head: VerificationCommit | null
   commits: Array<VerificationCommit>
   /** Documents at the head commit. */
@@ -489,6 +525,48 @@ export type ConsentScope =
   | 'participant:read'
 
 /** `POST /workspaces/aggregate`: counts across workspaces the caller owns. */
+/**
+ * How an integrator counts confirmations: `automatic-accepted` (default)
+ * counts automatic and manual confirmations; `manual-required` counts only
+ * those the organiser made by hand.
+ */
+export type ConfirmationCount = 'automatic-accepted' | 'manual-required'
+
+export type ConfirmationView = {
+  participantId: string
+  handle: string
+  attendance: { id: string; createdAt: string } | null
+  confirmation: {
+    id: string
+    mode: ConfirmationMode | null
+    confirmer: ConfirmerRef | null
+    createdAt: string
+    current: boolean
+  } | null
+}
+
+export type ConfirmInput = {
+  /** Specific participants; omitted means everyone who attested. */
+  participants?: Array<string>
+  /** Only attendance attestations made inside this window. */
+  within?: { from?: string; to?: string }
+  /** List what would be confirmed without writing anything. */
+  preview?: boolean
+}
+
+export type ConfirmResult = {
+  preview: boolean
+  toConfirm: Array<{
+    participantId: string
+    handle: string
+    attestationId: string
+    attestedAt: string
+  }>
+  alreadyConfirmed: Array<{ participantId: string; handle: string }>
+  notAttested: Array<{ participantId: string; handle: string }>
+  created: Array<Attestation>
+}
+
 export type WorkspaceAggregate = {
   /** Workspace ids that were counted. */
   workspaces: Array<string>
@@ -500,6 +578,10 @@ export type WorkspaceAggregate = {
   lowestScore: number | null
   withdrawals: number
   attendanceAttestations: number
+  /** Attending participants whose current attendance carries a confirmation. */
+  confirmedAttendance: number
+  /** Which confirmations counted, as requested. */
+  confirmation: ConfirmationCount
   recordApprovals: number
 }
 

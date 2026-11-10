@@ -17,6 +17,10 @@ import type {
   CommitDiff,
   CommitInput,
   CommitSummary,
+  ConfirmationCount,
+  ConfirmationView,
+  ConfirmInput,
+  ConfirmResult,
   ConsentScope,
   CreatedInvitation,
   Invitation,
@@ -27,18 +31,18 @@ import type {
   Me,
   Participant,
   Participation,
+  ReceiptResponse,
   RecordContent,
   RecordInput,
   RecordSummary,
-  ReceiptResponse,
   TokenResponse,
-  VerificationPage,
-  VisibilityResult,
-  Visibility,
   VconExportResult,
   VconForm,
   VconImportInput,
   VconImportResult,
+  VerificationPage,
+  Visibility,
+  VisibilityResult,
   Workspace,
   WorkspaceAggregate,
   WorkspaceDetail,
@@ -176,9 +180,13 @@ export function createClient(options: ClientOptions) {
      * POMP's internal identity, lowest score, withdrawals. Handles never
      * cross; integrators use this for study-level lines.
      */
-    aggregate: (workspaceIds: Array<string>) =>
+    aggregate: (
+      workspaceIds: Array<string>,
+      options: { confirmation?: ConfirmationCount } = {},
+    ) =>
       request<WorkspaceAggregate>('POST', '/api/v1/workspaces/aggregate', {
         workspaceIds,
+        ...(options.confirmation ? { confirmation: options.confirmation } : {}),
       }),
   }
 
@@ -282,6 +290,27 @@ export function createClient(options: ClientOptions) {
       ),
   }
 
+  /** Organiser confirmations of attendance (owner; spec section 6.1). */
+  const confirmations = {
+    list: (workspaceId: string) =>
+      request<ListResponse<ConfirmationView>>(
+        'GET',
+        `/api/v1/workspaces/${workspaceId}/confirmations`,
+      ),
+    /** Bulk or per participant; pass `preview: true` first to see the list. */
+    confirm: (workspaceId: string, input: ConfirmInput = {}) =>
+      request<ConfirmResult>(
+        'POST',
+        `/api/v1/workspaces/${workspaceId}/confirmations`,
+        input,
+      ),
+    withdraw: (workspaceId: string, participantId: string) =>
+      request<{ withdrawn: number }>(
+        'DELETE',
+        `/api/v1/workspaces/${workspaceId}/confirmations/${participantId}`,
+      ),
+  }
+
   const batches = {
     list: () => request<BatchList>('GET', '/api/v1/batches'),
     get: (id: string) => request<Batch>('GET', `/api/v1/batches/${id}`),
@@ -380,6 +409,7 @@ export function createClient(options: ClientOptions) {
     invitations,
     participants,
     attestations,
+    confirmations,
     batches,
     oauth,
     vcon,
