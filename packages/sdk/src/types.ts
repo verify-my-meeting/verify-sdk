@@ -46,6 +46,7 @@ export type ErrorCode =
   | 'conflict'
   | 'limit_exceeded'
   | 'standing_required'
+  | 'quota_exceeded'
   | 'cubid_unavailable'
   | 'rate_limited'
   | 'feature_disabled'
